@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { productAPI } from '@/services/api';
 import { useCart } from '@/context/CartContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -25,7 +26,7 @@ export default function ProductDetailPage() {
         setProduct(response.data.data);
       } catch (error) {
         console.error('Failed to fetch product:', error);
-        alert('Product not found');
+        toast.error('Product not found');
         router.push('/products');
       } finally {
         setLoading(false);
@@ -41,9 +42,9 @@ export default function ProductDetailPage() {
     setAddingToCart(false);
 
     if (result.success) {
-      alert('Product added to cart!');
+      toast.success('Product added to cart!');
     } else {
-      alert(result.message);
+      toast.error(result.message);
     }
   };
 

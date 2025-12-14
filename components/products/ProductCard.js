@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
@@ -14,9 +15,9 @@ export default function ProductCard({ product }) {
     setLoading(false);
 
     if (result.success) {
-      alert('Product added to cart!');
+      toast.success('Product added to cart!');
     } else {
-      alert(result.message);
+      toast.error(result.message);
     }
   };
 

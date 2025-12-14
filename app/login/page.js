@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { authAPI } from '@/services/api';
+import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,7 +55,7 @@ export default function LoginPage() {
 
         if (response.data.success) {
           localStorage.setItem('pendingEmail', formData.email);
-          alert('Signup successful! Please verify your email with the OTP sent.');
+          toast.success('Signup successful! Please verify your email with the OTP sent.');
           router.push('/verify-otp');
         }
       } else {

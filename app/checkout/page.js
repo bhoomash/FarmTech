@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { orderAPI, paymentAPI } from '@/services/api';
 import { validateData, shippingAddressSchema } from '@/utils/validators';
+import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -65,7 +66,7 @@ export default function CheckoutPage() {
       // Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        alert('Failed to load Razorpay. Please try again.');
+        toast.error('Failed to load Razorpay. Please try again.');
         setLoading(false);
         return;
       }
@@ -76,7 +77,7 @@ export default function CheckoutPage() {
       const razorpayKeyId = orderData.keyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
       if (!razorpayKeyId) {
-        alert('Razorpay configuration error. Please contact support.');
+        toast.error('Razorpay configuration error. Please contact support.');
         setLoading(false);
         return;
       }
@@ -116,11 +117,11 @@ export default function CheckoutPage() {
             await clearCart();
             
             // Redirect to success page
-            alert('Order placed successfully!');
+            toast.success('Order placed successfully!');
             router.push(`/orders`);
           } catch (error) {
             console.error('Payment verification failed:', error);
-            alert('Payment verification failed. Please contact support.');
+            toast.error('Payment verification failed. Please contact support.');
           }
         },
         prefill: {
@@ -138,7 +139,7 @@ export default function CheckoutPage() {
       setLoading(false);
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Failed to initiate payment. Please try again.');
+      toast.error('Failed to initiate payment. Please try again.');
       setLoading(false);
     }
   };
