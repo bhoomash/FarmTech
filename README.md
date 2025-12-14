@@ -295,4 +295,5 @@ MIT License - Free for personal and commercial use.
 
 > **Note**: The `backend/` folder is deprecated. All backend logic is now in `frontend/app/api/`
 #   F a r m T e c h  
+ #   F a r m T e c h  
  
