@@ -40,7 +40,8 @@ export default function VerifyOTPPage() {
 
     if (result.success) {
       localStorage.removeItem('pendingEmail');
-      router.push('/');
+      // Redirect to landing page
+      window.location.href = '/';
     } else {
       setErrors({ general: result.message });
     }

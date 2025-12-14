@@ -67,9 +67,8 @@ export default function LoginPage() {
         if (response.data.success) {
           localStorage.setItem('token', response.data.token);
           localStorage.setItem('user', JSON.stringify(response.data.user));
-          alert('Login successful!');
-          router.push('/');
-          window.location.reload();
+          // Redirect to landing page
+          window.location.href = '/';
         }
       }
     } catch (error) {
