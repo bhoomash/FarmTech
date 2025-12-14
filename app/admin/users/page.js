@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import toast from 'react-hot-toast';
 
 export default function UsersManagementPage() {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -35,11 +36,11 @@ export default function UsersManagementPage() {
       if (response.ok) {
         setUsers(data.users || []);
       } else {
-        alert(data.message || 'Failed to fetch users');
+        toast.error(data.message || 'Failed to fetch users');
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
-      alert('An error occurred while fetching users');
+      toast.error('An error occurred while fetching users');
     } finally {
       setLoading(false);
     }
@@ -63,14 +64,14 @@ export default function UsersManagementPage() {
 
       const data = await response.json();
       if (response.ok) {
-        alert('User role updated successfully');
+        toast.success('User role updated successfully');
         fetchUsers();
       } else {
-        alert(data.message || 'Failed to update user role');
+        toast.error(data.message || 'Failed to update user role');
       }
     } catch (error) {
       console.error('Failed to update user role:', error);
-      alert('An error occurred while updating user role');
+      toast.error('An error occurred while updating user role');
     }
   };
 
@@ -90,14 +91,14 @@ export default function UsersManagementPage() {
 
       const data = await response.json();
       if (response.ok) {
-        alert('User deleted successfully');
+        toast.success('User deleted successfully');
         fetchUsers();
       } else {
-        alert(data.message || 'Failed to delete user');
+        toast.error(data.message || 'Failed to delete user');
       }
     } catch (error) {
       console.error('Failed to delete user:', error);
-      alert('An error occurred while deleting user');
+      toast.error('An error occurred while deleting user');
     }
   };
 
