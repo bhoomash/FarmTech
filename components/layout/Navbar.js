@@ -332,17 +332,6 @@ export default function Navbar() {
                           <span className="text-sm font-medium text-neutral-900">My Cart</span>
                         </Link>
 
-                        <Link 
-                          href="/wishlist" 
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-3 px-5 py-2.5 hover:bg-neutral-50 transition-colors"
-                        >
-                          <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                          </svg>
-                          <span className="text-sm font-medium text-neutral-900">My Wishlist</span>
-                        </Link>
-
                         {isAdmin && (
                           <Link 
                             href="/admin/dashboard" 
@@ -374,14 +363,7 @@ export default function Navbar() {
                   )}
                 </div>
 
-                {/* Wishlist Icon */}
-                <Link href="/wishlist" className="p-2 hover:bg-neutral-50 rounded-full transition-colors">
-                  <svg className="w-6 h-6 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                </Link>
-
-                {/* Cart Icon */}
+                {/* Cart Icon */
                 <Link href="/cart" className="relative p-2 hover:bg-neutral-50 rounded-full transition-colors">
                   <svg className="w-6 h-6 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />

@@ -2,14 +2,11 @@
 
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
-import { useAuth } from '@/context/AuthContext';
 import { useState } from 'react';
 
 export default function ProductCard({ product }) {
   const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [inWishlist, setInWishlist] = useState(false);
 
   const handleAddToCart = async () => {
     setLoading(true);
@@ -20,55 +17,6 @@ export default function ProductCard({ product }) {
       alert('Product added to cart!');
     } else {
       alert(result.message);
-    }
-  };
-
-  const handleToggleWishlist = async (e) => {
-    e.preventDefault();
-    
-    if (!isAuthenticated) {
-      alert('Please login to add items to wishlist');
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('token');
-      
-      if (inWishlist) {
-        // Remove from wishlist
-        const response = await fetch(`/api/user/wishlist/${product._id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (response.ok) {
-          setInWishlist(false);
-          alert('Removed from wishlist');
-        }
-      } else {
-        // Add to wishlist
-        const response = await fetch('/api/user/wishlist', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ productId: product._id })
-        });
-
-        if (response.ok) {
-          setInWishlist(true);
-          alert('Added to wishlist!');
-        } else {
-          const data = await response.json();
-          alert(data.message || 'Failed to add to wishlist');
-        }
-      }
-    } catch (error) {
-      console.error('Wishlist error:', error);
-      alert('An error occurred');
     }
   };
 
@@ -120,24 +68,6 @@ export default function ProductCard({ product }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleToggleWishlist(e);
-            }}
-            className="w-12 h-12 flex items-center justify-center hover:bg-neutral-100 transition-colors"
-          >
-            <svg 
-              className={`w-5 h-5 ${inWishlist ? 'fill-red-500 text-red-500' : 'text-neutral-600'}`} 
-              fill={inWishlist ? 'currentColor' : 'none'} 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-          </button>
-
           <button
             onClick={(e) => {
               e.preventDefault();
