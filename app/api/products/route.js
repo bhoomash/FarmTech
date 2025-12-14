@@ -45,8 +45,13 @@ export async function GET(request) {
     );
   } catch (error) {
     console.error('Get products error:', error);
+    console.error('Error stack:', error.stack);
     return NextResponse.json(
-      { message: error.message || 'Server error' },
+      { 
+        success: false,
+        message: error.message || 'Server error',
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
