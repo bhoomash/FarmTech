@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ProductCard from '@/components/products/ProductCard';
 import { productAPI } from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
-export default function ProductsPage() {
+function ProductsContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -161,5 +161,13 @@ export default function ProductsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <ProductsContent />
+    </Suspense>
   );
 }
