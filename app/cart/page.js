@@ -8,7 +8,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function CartPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, openAuthModal } = useAuth();
   const { cart, loading } = useCart();
 
   if (!isAuthenticated) {
@@ -20,7 +20,7 @@ export default function CartPage() {
             <h1 className="text-2xl font-bold text-neutral-900 mb-3">Login Required</h1>
             <p className="text-neutral-600 mb-6">Please login to view your cart</p>
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => openAuthModal('login')}
               className="btn-primary"
             >
               Login

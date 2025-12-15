@@ -26,7 +26,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login');
+      openAuthModal('login');
       return;
     }
 

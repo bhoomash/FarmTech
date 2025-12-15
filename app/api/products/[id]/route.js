@@ -8,7 +8,8 @@ export async function GET(request, { params }) {
   try {
     await dbConnect();
 
-    const product = await Product.findById(params.id);
+    const { id } = await params;
+    const product = await Product.findById(id);
 
     if (!product) {
       return NextResponse.json(
@@ -57,8 +58,9 @@ export async function PUT(request, { params }) {
     await dbConnect();
 
     const body = await request.json();
+    const { id } = await params;
     const product = await Product.findByIdAndUpdate(
-      params.id,
+      id,
       body,
       { new: true, runValidators: true }
     );
@@ -106,7 +108,8 @@ export async function DELETE(request, { params }) {
 
     await dbConnect();
 
-    const product = await Product.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const product = await Product.findByIdAndDelete(id);
 
     if (!product) {
       return NextResponse.json(

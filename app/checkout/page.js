@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, openAuthModal } = useAuth();
   const { cart, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});

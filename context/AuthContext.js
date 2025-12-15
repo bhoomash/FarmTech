@@ -17,6 +17,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login');
 
   // Initialize auth state from localStorage
   useEffect(() => {
@@ -87,6 +89,16 @@ export const AuthProvider = ({ children }) => {
   // Check if user is admin
   const isAdmin = user?.role === 'admin';
 
+  // Functions to control auth modal
+  const openAuthModal = (mode = 'login') => {
+    setAuthModalMode(mode);
+    setAuthModalOpen(true);
+  };
+
+  const closeAuthModal = () => {
+    setAuthModalOpen(false);
+  };
+
   const value = {
     user,
     token,
@@ -96,7 +108,11 @@ export const AuthProvider = ({ children }) => {
     sendOTP,
     verifyOTP,
     logout,
-    refreshProfile
+    refreshProfile,
+    authModalOpen,
+    authModalMode,
+    openAuthModal,
+    closeAuthModal
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
