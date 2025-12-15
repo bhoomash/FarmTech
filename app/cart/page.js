@@ -55,58 +55,88 @@ export default function CartPage() {
     );
   }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-bold mb-8">Shopping Cart</h1>
+  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalSavings = cart.items.reduce((sum, item) => {
+    const savings = (item.product.price * item.product.discount / 100) * item.quantity;
+    return sum + savings;
+  }, 0);
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  return (
+    <div className="bg-white min-h-screen pb-32">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-neutral-900">Shopping Cart</h1>
+        </div>
+
+        {/* Savings Banner */}
+        {totalSavings > 0 && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-700 font-medium">Your total savings</span>
+              <span className="text-green-600 font-bold text-lg">₹{totalSavings.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+
         {/* Cart Items */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="space-y-6 mb-8">
           {cart.items.map((item) => (
             <CartItem key={item.product._id} item={item} />
           ))}
         </div>
 
-        {/* Order Summary */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg shadow-lg p-6 sticky top-20">
-            <h2 className="text-xl font-bold mb-4">Order Summary</h2>
-
-            <div className="space-y-3 mb-4">
-              <div className="flex justify-between text-gray-600">
-                <span>Subtotal</span>
-                <span>₹{cart.subtotal?.toFixed(2) || '0.00'}</span>
-              </div>
-
-              {cart.discount > 0 && (
-                <div className="flex justify-between text-accent-600">
-                  <span>Discount</span>
-                  <span>-₹{cart.discount?.toFixed(2) || '0.00'}</span>
-                </div>
-              )}
-
-              <div className="border-t pt-3">
-                <div className="flex justify-between text-xl font-bold">
-                  <span>Total</span>
-                  <span className="text-primary-600">₹{cart.total?.toFixed(2) || '0.00'}</span>
-                </div>
+        {/* Bill Details */}
+        <div className="bg-white border-t pt-6">
+          <h2 className="text-lg font-bold text-neutral-900 mb-4">Bill details</h2>
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-600">Items total</span>
+              <div className="flex items-center gap-2">
+                {totalSavings > 0 && (
+                  <span className="text-neutral-400 line-through text-sm">
+                    ₹{cart.subtotal?.toFixed(2)}
+                  </span>
+                )}
+                <span className="text-neutral-900 font-medium">
+                  ₹{(cart.subtotal - totalSavings).toFixed(2)}
+                </span>
               </div>
             </div>
 
-            <button
-              onClick={() => router.push('/checkout')}
-              className="w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition font-semibold"
-            >
-              Proceed to Checkout
-            </button>
+            <div className="flex items-center justify-between">
+              <span className="text-neutral-600">Quantity total</span>
+              <span className="text-neutral-900 font-medium">{totalItems} items</span>
+            </div>
 
-            <button
-              onClick={() => router.push('/products')}
-              className="w-full mt-3 border border-gray-300 py-3 rounded-lg hover:bg-gray-50 transition"
-            >
-              Continue Shopping
-            </button>
+            <div className="border-t pt-3 mt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-neutral-900 font-bold text-lg">Grand total</span>
+                <span className="text-neutral-900 font-bold text-xl">
+                  ₹{cart.total?.toFixed(2) || '0.00'}
+                </span>
+              </div>
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Fixed Bottom Checkout Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <button
+            onClick={() => router.push('/checkout')}
+            className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition font-semibold text-lg flex items-center justify-between px-6"
+          >
+            <span>₹{cart.total?.toFixed(2) || '0.00'}</span>
+            <span className="flex items-center gap-2">
+              Proceed to Checkout
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </span>
+          </button>
         </div>
       </div>
     </div>

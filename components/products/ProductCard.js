@@ -44,7 +44,7 @@ export default function ProductCard({ product }) {
   return (
     <div className="bg-white overflow-hidden transition-all duration-200 relative">
       <Link href={`/products/${product._id}`}>
-        <div className="relative h-48 bg-neutral-50">
+        <div className="relative h-36 sm:h-48 bg-neutral-50">
           {product.discount > 0 && (
             <div className="absolute top-2 left-2 z-10">
               <div className="bg-neutral-800 text-white text-xs font-medium px-2 py-1">
@@ -63,24 +63,24 @@ export default function ProductCard({ product }) {
         </div>
       </Link>
 
-      <div className="p-3">
+      <div className="p-2 sm:p-3">
         <Link href={`/products/${product._id}`}>
-          <h3 className="font-normal text-sm mb-1 text-neutral-900 line-clamp-1">
+          <h3 className="font-normal text-xs sm:text-sm mb-1 text-neutral-900 line-clamp-1">
             {product.name}
           </h3>
         </Link>
 
-        <p className="text-neutral-500 text-xs mb-3 line-clamp-1">
+        <p className="text-neutral-500 text-[10px] sm:text-xs mb-2 sm:mb-3 line-clamp-1">
           {product.description}
         </p>
 
-        <div className="mb-3">
+        <div className="mb-2 sm:mb-3">
           {product.discount > 0 ? (
-            <span className="text-lg font-normal text-neutral-900">
+            <span className="text-base sm:text-lg font-normal text-neutral-900">
               ₹{finalPrice.toFixed(2)}
             </span>
           ) : (
-            <span className="text-lg font-normal text-neutral-900">
+            <span className="text-base sm:text-lg font-normal text-neutral-900">
               ₹{product.price}
             </span>
           )}
@@ -89,7 +89,7 @@ export default function ProductCard({ product }) {
         <button
           onClick={handleBuyNow}
           disabled={loading || product.stock === 0}
-          className="w-full h-10 bg-transparent text-green-600 font-light text-sm border-0 hover:text-green-700 transition-colors disabled:text-neutral-300 disabled:cursor-not-allowed"
+          className="w-full h-8 sm:h-10 bg-transparent text-green-600 font-light text-xs sm:text-sm border-0 hover:text-green-700 transition-colors disabled:text-neutral-300 disabled:cursor-not-allowed"
         >
           {loading ? 'Processing...' : product.stock === 0 ? 'Out of Stock' : 'Buy Now'}
         </button>

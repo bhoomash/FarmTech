@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ProfilePage() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -115,9 +115,9 @@ export default function ProfilePage() {
 
   return (
     <div className="bg-neutral-50 min-h-screen">
-      <div className="flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-white border-r border-neutral-200 min-h-screen p-6">
+      <div className="lg:flex">
+        {/* Sidebar - Desktop */}
+        <div className="hidden lg:block w-64 bg-white border-r border-neutral-200 min-h-screen p-6">
           <div className="mb-8">
             <h2 className="text-sm font-semibold text-neutral-900 mb-4">Account</h2>
             <nav className="space-y-1">
@@ -146,7 +146,32 @@ export default function ProfilePage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-8">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8">
+          {/* Mobile Tabs */}
+          <div className="lg:hidden mb-6 bg-white rounded-lg p-1 border border-neutral-200">
+            <div className="flex gap-1">
+              <button
+                onClick={() => setActiveTab('account')}
+                className={`flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-colors border ${
+                  activeTab === 'account'
+                    ? 'bg-white text-green-600 border-green-600'
+                    : 'text-neutral-700 hover:bg-neutral-50 border-transparent'
+                }`}
+              >
+                Profile
+              </button>
+              <button
+                onClick={() => setActiveTab('password')}
+                className={`flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-colors border ${
+                  activeTab === 'password'
+                    ? 'bg-white text-green-600 border-green-600'
+                    : 'text-neutral-700 hover:bg-neutral-50 border-transparent'
+                }`}
+              >
+                Password
+              </button>
+            </div>
+          </div>
           <div className="max-w-4xl">
             {message.text && (
               <div className={`mb-6 p-4 rounded-lg ${
@@ -159,12 +184,12 @@ export default function ProfilePage() {
             )}
 
             {activeTab === 'account' && (
-              <div className="space-y-8">
+              <div className="space-y-6 sm:space-y-8">
                 {/* Profile Information */}
-                <div className="bg-white rounded-lg p-8 border border-neutral-200">
-                  <h2 className="text-xl font-semibold text-neutral-900 mb-6">Profile Information</h2>
+                <div className="bg-white rounded-lg p-4 sm:p-6 lg:p-8 border border-neutral-200">
+                  <h2 className="text-lg sm:text-xl font-semibold text-neutral-900 mb-4 sm:mb-6">Profile Information</h2>
                   <form onSubmit={handleSubmit}>
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div>
                         <label className="block text-sm font-medium text-neutral-700 mb-2">
                           Username
@@ -174,26 +199,6 @@ export default function ProfilePage() {
                           name="name"
                           value={formData.name}
                           onChange={handleChange}
-                          className="w-full px-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          First Name
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          Nickname
-                        </label>
-                        <input
-                          type="text"
                           className="w-full px-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       </div>
@@ -211,34 +216,12 @@ export default function ProfilePage() {
                           <option value="admin">Admin</option>
                         </select>
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          Last Name
-                        </label>
-                        <input
-                          type="text"
-                          className="w-full px-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          Display Name Publicly as
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.name}
-                          disabled
-                          className="w-full px-4 py-2 border border-neutral-300 rounded-md bg-neutral-50"
-                        />
-                      </div>
                     </div>
 
                     {/* Contact Info */}
-                    <div className="mt-8">
-                      <h3 className="text-lg font-semibold text-neutral-900 mb-4">Contact Info</h3>
-                      <div className="grid grid-cols-2 gap-6">
+                    <div className="mt-6 sm:mt-8">
+                      <h3 className="text-base sm:text-lg font-semibold text-neutral-900 mb-3 sm:mb-4">Contact Info</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                         <div>
                           <label className="block text-sm font-medium text-neutral-700 mb-2">
                             Email (required)
@@ -254,7 +237,7 @@ export default function ProfilePage() {
 
                         <div>
                           <label className="block text-sm font-medium text-neutral-700 mb-2">
-                            WhatsApp
+                            Phone Number
                           </label>
                           <input
                             type="tel"
@@ -264,50 +247,6 @@ export default function ProfilePage() {
                             className="w-full px-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-2">
-                            Website
-                          </label>
-                          <input
-                            type="url"
-                            name="website"
-                            value={formData.website}
-                            onChange={handleChange}
-                            className="w-full px-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-2">
-                            Telegram
-                          </label>
-                          <input
-                            type="text"
-                            name="address"
-                            value={formData.address}
-                            onChange={handleChange}
-                            className="w-full px-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* About */}
-                    <div className="mt-8">
-                      <h3 className="text-lg font-semibold text-neutral-900 mb-4">About the User</h3>
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          Background Info
-                        </label>
-                        <textarea
-                          name="bio"
-                          value={formData.bio}
-                          onChange={handleChange}
-                          rows="4"
-                          className="w-full px-4 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Tell us about yourself..."
-                        />
                       </div>
                     </div>
 
@@ -315,7 +254,7 @@ export default function ProfilePage() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors disabled:bg-neutral-400"
+                        className="w-full sm:w-auto px-6 py-2.5 bg-white text-green-600 border border-green-600 font-medium rounded-md hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {loading ? 'Saving...' : 'Save Changes'}
                       </button>
@@ -326,8 +265,8 @@ export default function ProfilePage() {
             )}
 
             {activeTab === 'password' && (
-              <div className="bg-white rounded-lg p-8 border border-neutral-200">
-                <h2 className="text-xl font-semibold text-neutral-900 mb-6">Change Password</h2>
+              <div className="bg-white rounded-lg p-4 sm:p-6 lg:p-8 border border-neutral-200">
+                <h2 className="text-lg sm:text-xl font-semibold text-neutral-900 mb-4 sm:mb-6">Change Password</h2>
                 <form onSubmit={handlePasswordSubmit} className="max-w-md">
                   <div className="space-y-4">
                     <div>
@@ -363,7 +302,7 @@ export default function ProfilePage() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="px-6 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors disabled:bg-neutral-400"
+                      className="w-full sm:w-auto px-6 py-2.5 bg-white text-green-600 border border-green-600 font-medium rounded-md hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? 'Changing...' : 'Change Password'}
                     </button>

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import CartDrawer from '@/components/cart/CartDrawer';
 
 export default function Navbar() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export default function Navbar() {
   const [productsDropdownOpen, setProductsDropdownOpen] = useState(false);
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const dropdownRef = useRef(null);
   const productsDropdownRef = useRef(null);
   const adminDropdownRef = useRef(null);
@@ -325,16 +327,18 @@ export default function Navbar() {
                           <span className="text-sm font-medium text-neutral-900">My Profile</span>
                         </Link>
 
-                        <Link 
-                          href="/cart" 
-                          onClick={() => setUserDropdownOpen(false)}
-                          className="flex items-center gap-3 px-5 py-2.5 hover:bg-neutral-50 transition-colors"
+                        <button 
+                          onClick={() => {
+                            setUserDropdownOpen(false);
+                            setCartDrawerOpen(true);
+                          }}
+                          className="flex items-center gap-3 px-5 py-2.5 hover:bg-neutral-50 transition-colors w-full"
                         >
                           <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                           </svg>
                           <span className="text-sm font-medium text-neutral-900">My Cart</span>
-                        </Link>
+                        </button>
                       </div>
 
                       {/* Logout Button */}
@@ -353,7 +357,10 @@ export default function Navbar() {
                   )}
                 </div>
 
-                <Link href="/cart" className="relative p-2 hover:bg-neutral-50 rounded-full transition-colors">
+                <button 
+                  onClick={() => setCartDrawerOpen(true)}
+                  className="relative p-2 hover:bg-neutral-50 rounded-full transition-colors"
+                >
                   <svg className="w-6 h-6 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
@@ -362,7 +369,7 @@ export default function Navbar() {
                       {cartItemCount}
                     </span>
                   )}
-                </Link>
+                </button>
 
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -547,10 +554,12 @@ export default function Navbar() {
               {/* Cart Summary Footer */}
               {cartItemCount > 0 && (
                 <div className="border-t border-neutral-200 p-4 bg-neutral-900">
-                  <Link 
-                    href="/cart" 
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center justify-between"
+                  <button 
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setCartDrawerOpen(true);
+                    }}
+                    className="flex items-center justify-between w-full"
                   >
                     <div className="flex items-center gap-3 text-white">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -560,13 +569,13 @@ export default function Navbar() {
                         <div className="text-xs text-neutral-400">{cartItemCount} items</div>
                       </div>
                     </div>
-                    <button className="bg-white text-neutral-900 px-4 py-2 rounded text-sm font-medium hover:bg-neutral-100 transition-colors flex items-center gap-1">
+                    <div className="bg-white text-neutral-900 px-4 py-2 rounded text-sm font-medium hover:bg-neutral-100 transition-colors flex items-center gap-1">
                       View Cart
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
-                    </button>
-                  </Link>
+                    </div>
+                  </button>
                 </div>
               )}
             </div>
@@ -581,6 +590,9 @@ export default function Navbar() {
           />
         )}
       </div>
+
+      {/* Cart Drawer */}
+      <CartDrawer isOpen={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
     </nav>
   );
 }

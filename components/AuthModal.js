@@ -257,7 +257,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full"
+              className="w-full bg-white text-green-600 border border-green-600 py-3 rounded-lg hover:bg-green-50 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (isSignup ? 'Creating Account...' : 'Logging in...') : (isSignup ? 'Sign Up' : 'Login')}
             </button>
