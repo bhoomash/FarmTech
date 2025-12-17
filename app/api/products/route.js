@@ -3,16 +3,43 @@ import dbConnect from '@/lib/db';
 import Product from '@/models/Product';
 import { protect, authorize } from '@/lib/auth';
 
+// In-memory cache for products (server-side)
+let productsCache = {
+  data: null,
+  timestamp: 0,
+  queries: new Map()
+};
+const CACHE_DURATION = 30000; // 30 seconds
+
 // GET /api/products - Get all products with filters
 export async function GET(request) {
   try {
-    await dbConnect();
-
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
     const search = searchParams.get('search');
+
+    // Create cache key from query params
+    const cacheKey = JSON.stringify({ category, minPrice, maxPrice, search });
+    const now = Date.now();
+
+    // Check cache first
+    const cached = productsCache.queries.get(cacheKey);
+    if (cached && now - cached.timestamp < CACHE_DURATION) {
+      return NextResponse.json(
+        { success: true, data: cached.data },
+        { 
+          status: 200,
+          headers: {
+            'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+            'X-Cache': 'HIT'
+          }
+        }
+      );
+    }
+
+    await dbConnect();
 
     // Build query - don't filter by isActive if products don't have this field
     let query = {};
@@ -28,20 +55,43 @@ export async function GET(request) {
     }
 
     if (search) {
+      // Sanitize search input to prevent ReDoS attacks
+      const sanitizedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
+        { name: { $regex: sanitizedSearch, $options: 'i' } },
+        { description: { $regex: sanitizedSearch, $options: 'i' } },
       ];
     }
 
-    const products = await Product.find(query).sort({ createdAt: -1 });
+    const products = await Product.find(query)
+      .sort({ createdAt: -1 })
+      .lean() // Returns plain JS objects (faster)
+      .exec();
+
+    // Cache the result
+    productsCache.queries.set(cacheKey, {
+      data: products,
+      timestamp: now
+    });
+
+    // Cleanup old cache entries (keep last 20)
+    if (productsCache.queries.size > 20) {
+      const firstKey = productsCache.queries.keys().next().value;
+      productsCache.queries.delete(firstKey);
+    }
 
     return NextResponse.json(
       {
         success: true,
         data: products
       },
-      { status: 200 }
+      { 
+        status: 200,
+        headers: {
+          'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60',
+          'X-Cache': 'MISS'
+        }
+      }
     );
   } catch (error) {
     console.error('Get products error:', error);

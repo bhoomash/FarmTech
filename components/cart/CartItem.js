@@ -1,9 +1,11 @@
 'use client';
 
 import { useCart } from '@/context/CartContext';
+import { useConfirm } from '@/components/ConfirmModal';
 
 export default function CartItem({ item }) {
   const { updateCartItem, removeFromCart } = useCart();
+  const { confirm } = useConfirm();
 
   const handleQuantityChange = async (newQuantity) => {
     if (newQuantity < 1) return;
@@ -11,7 +13,14 @@ export default function CartItem({ item }) {
   };
 
   const handleRemove = async () => {
-    if (confirm('Remove this item from cart?')) {
+    const confirmed = await confirm({
+      title: 'Remove Item',
+      message: 'Remove this item from your cart?',
+      confirmText: 'Remove',
+      variant: 'warning'
+    });
+    
+    if (confirmed) {
       await removeFromCart(item.product._id);
     }
   };
@@ -39,7 +48,7 @@ export default function CartItem({ item }) {
           <div className="flex items-start justify-between mb-1">
             <div>
               <h3 className="font-semibold text-neutral-900 text-sm leading-tight">{item.product.name}</h3>
-              <p className="text-neutral-500 text-xs">Size: M</p>
+              <p className="text-neutral-500 text-xs">{item.product.category}</p>
             </div>
             <button
               onClick={handleRemove}

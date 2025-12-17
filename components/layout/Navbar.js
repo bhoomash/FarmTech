@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import CartDrawer from '@/components/cart/CartDrawer';
+import { prefetchProducts, prefetchOrders, prefetchCart, prefetchAdminOrders, prefetchAdminUsers } from '@/lib/prefetch';
 
-export default function Navbar() {
+const Navbar = memo(function Navbar() {
   const router = useRouter();
   const { user, isAuthenticated, logout, isAdmin, openAuthModal } = useAuth();
   const { cartItemCount } = useCart();
@@ -22,6 +23,7 @@ export default function Navbar() {
   const productsDropdownRef = useRef(null);
   const adminDropdownRef = useRef(null);
   const searchTimeoutRef = useRef(null);
+  const prefetchTimeoutRef = useRef(null);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -41,36 +43,71 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Real-time search with debounce
+  // Real-time search with debounce and prefetch optimization
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
+    if (prefetchTimeoutRef.current) {
+      clearTimeout(prefetchTimeoutRef.current);
+    }
 
-    if (searchQuery.trim()) {
+    const trimmedQuery = searchQuery.trim();
+    
+    if (trimmedQuery) {
+      // Prefetch route immediately (faster navigation)
+      router.prefetch(`/products?search=${encodeURIComponent(trimmedQuery)}`);
+      
+      // Prefetch search results after 200ms (while user is still typing)
+      prefetchTimeoutRef.current = setTimeout(async () => {
+        try {
+          const { productAPI } = await import('@/services/api');
+          const response = await productAPI.getProducts({ search: trimmedQuery });
+          // Cache the prefetched results
+          if (response.data?.data) {
+            sessionStorage.setItem('prefetchedSearch', JSON.stringify({
+              query: trimmedQuery,
+              data: response.data.data,
+              timestamp: Date.now()
+            }));
+          }
+        } catch (error) {
+          // Silently fail - products page will fetch if needed
+        }
+      }, 200);
+
+      // Navigate after 400ms of no typing (reduced from 500ms)
       searchTimeoutRef.current = setTimeout(() => {
-        router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
-      }, 500);
+        router.push(`/products?search=${encodeURIComponent(trimmedQuery)}`);
+      }, 400);
     }
 
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
+      if (prefetchTimeoutRef.current) {
+        clearTimeout(prefetchTimeoutRef.current);
+      }
     };
   }, [searchQuery, router]);
 
-  const handleSearch = (e) => {
+  const handleSearch = useCallback((e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+    const trimmedQuery = searchQuery.trim();
+    if (trimmedQuery) {
+      // Clear any pending timeouts for immediate navigation
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+      router.push(`/products?search=${encodeURIComponent(trimmedQuery)}`);
     }
-  };
+  }, [searchQuery, router]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     logout();
     setUserDropdownOpen(false);
-  };
+  }, [logout]);
 
   return (
     <nav className="bg-white border-b border-neutral-200 sticky top-0 z-50">
@@ -117,6 +154,7 @@ export default function Navbar() {
                   <Link 
                     href="/products" 
                     onClick={() => setProductsDropdownOpen(false)}
+                    onMouseEnter={() => prefetchProducts({})}
                     className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50 transition-colors"
                   >
                     <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -131,6 +169,7 @@ export default function Navbar() {
                   <Link 
                     href="/products?category=Fertilizer" 
                     onClick={() => setProductsDropdownOpen(false)}
+                    onMouseEnter={() => prefetchProducts({ category: 'Fertilizer' })}
                     className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50 transition-colors"
                   >
                     <span className="text-sm font-medium text-neutral-900">Fertilizer</span>
@@ -139,6 +178,7 @@ export default function Navbar() {
                   <Link 
                     href="/products?category=Seeds" 
                     onClick={() => setProductsDropdownOpen(false)}
+                    onMouseEnter={() => prefetchProducts({ category: 'Seeds' })}
                     className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50 transition-colors"
                   >
                     <span className="text-sm font-medium text-neutral-900">Seeds</span>
@@ -147,6 +187,7 @@ export default function Navbar() {
                   <Link 
                     href="/products?category=Pesticides" 
                     onClick={() => setProductsDropdownOpen(false)}
+                    onMouseEnter={() => prefetchProducts({ category: 'Pesticides' })}
                     className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50 transition-colors"
                   >
                     <span className="text-sm font-medium text-neutral-900">Pesticides</span>
@@ -155,6 +196,7 @@ export default function Navbar() {
                   <Link 
                     href="/products?category=Tools" 
                     onClick={() => setProductsDropdownOpen(false)}
+                    onMouseEnter={() => prefetchProducts({ category: 'Tools' })}
                     className="flex items-center gap-3 px-4 py-2.5 hover:bg-neutral-50 transition-colors"
                   >
                     <span className="text-sm font-medium text-neutral-900">Tools</span>
@@ -164,14 +206,27 @@ export default function Navbar() {
             </div>
 
             {isAuthenticated && (
-              <Link href="/orders" className="flex items-center gap-1 text-sm font-medium text-neutral-700 hover:text-neutral-900 transition-colors">
+              <Link 
+                href="/orders" 
+                onMouseEnter={() => prefetchOrders()}
+                className="flex items-center gap-1 text-sm font-medium text-neutral-700 hover:text-neutral-900 transition-colors"
+              >
                 MY ORDERS
               </Link>
             )}
             
             {/* Admin Dropdown */}
             {isAdmin && (
-              <div className="relative" ref={adminDropdownRef}>
+              <div 
+                className="relative" 
+                ref={adminDropdownRef}
+                onMouseEnter={() => {
+                  // Prefetch all admin data on hover
+                  prefetchProducts();
+                  prefetchAdminOrders();
+                  prefetchAdminUsers();
+                }}
+              >
                 <button 
                   onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
                   className="flex items-center gap-1 text-sm font-medium text-accent-600 hover:text-accent-700 transition-colors"
@@ -193,6 +248,7 @@ export default function Navbar() {
                     <Link 
                       href="/admin/products" 
                       onClick={() => setAdminDropdownOpen(false)}
+                      onMouseEnter={() => prefetchProducts()}
                       className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent-50 transition-colors"
                     >
                       <svg className="w-5 h-5 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,6 +260,7 @@ export default function Navbar() {
                     <Link 
                       href="/admin/orders" 
                       onClick={() => setAdminDropdownOpen(false)}
+                      onMouseEnter={() => prefetchAdminOrders()}
                       className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent-50 transition-colors"
                     >
                       <svg className="w-5 h-5 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -215,6 +272,7 @@ export default function Navbar() {
                     <Link 
                       href="/admin/users" 
                       onClick={() => setAdminDropdownOpen(false)}
+                      onMouseEnter={() => prefetchAdminUsers()}
                       className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent-50 transition-colors"
                     >
                       <svg className="w-5 h-5 text-accent-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,7 +294,7 @@ export default function Navbar() {
               </svg>
               <input
                 type="text"
-                placeholder="Search 'Products'"
+                placeholder="Search 'Fertilizers, Seeds, Tools...'"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch(e)}
@@ -359,6 +417,7 @@ export default function Navbar() {
 
                 <button 
                   onClick={() => setCartDrawerOpen(true)}
+                  onMouseEnter={() => prefetchCart()}
                   className="relative p-2 hover:bg-neutral-50 rounded-full transition-colors"
                 >
                   <svg className="w-6 h-6 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -595,4 +654,6 @@ export default function Navbar() {
       <CartDrawer isOpen={cartDrawerOpen} onClose={() => setCartDrawerOpen(false)} />
     </nav>
   );
-}
+});
+
+export default Navbar;

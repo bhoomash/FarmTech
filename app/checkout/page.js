@@ -24,14 +24,19 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login');
+      openAuthModal('login');
+      router.push('/');
     } else if (!cart.items || cart.items.length === 0) {
       router.push('/cart');
     }
-  }, [isAuthenticated, cart.items, router]);
+  }, [isAuthenticated, cart.items, router, openAuthModal]);
 
   if (!isAuthenticated || !cart.items || cart.items.length === 0) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-yellow-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+      </div>
+    );
   }
 
   const handleChange = (e) => {

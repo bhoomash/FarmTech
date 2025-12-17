@@ -3,21 +3,59 @@ import axios from 'axios';
 // Now using Next.js API routes (same origin - port 3000)
 const API_URL = '/api';
 
-// Create axios instance
+// Simple cache for GET requests with proper cleanup
+const cache = new Map();
+const CACHE_DURATION = 30000; // 30 seconds
+const MAX_CACHE_SIZE = 50;
+
+// Cleanup expired cache entries periodically
+const cleanupCache = () => {
+  const now = Date.now();
+  for (const [key, value] of cache.entries()) {
+    if (now - value.timestamp > CACHE_DURATION) {
+      cache.delete(key);
+    }
+  }
+};
+
+// Run cleanup every minute
+if (typeof window !== 'undefined') {
+  setInterval(cleanupCache, 60000);
+}
+
+// Create axios instance with performance optimizations
 const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 30000, // 30 second timeout
 });
 
-// Request interceptor to add token
+// Request interceptor to add token and handle caching
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Cache GET requests
+    if (config.method === 'get' && !config.params?.skipCache) {
+      const cacheKey = `${config.url}${JSON.stringify(config.params || {})}`;
+      const cached = cache.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        config.adapter = () => Promise.resolve({
+          data: cached.data,
+          status: 200,
+          statusText: 'OK (cached)',
+          headers: {},
+          config,
+        });
+      }
+    }
+    
     return config;
   },
   (error) => {
@@ -25,14 +63,32 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+// Response interceptor for error handling and caching
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Cache successful GET requests
+    if (response.config.method === 'get' && response.status === 200) {
+      const cacheKey = `${response.config.url}${JSON.stringify(response.config.params || {})}`;
+      cache.set(cacheKey, {
+        data: response.data,
+        timestamp: Date.now(),
+      });
+      
+      // Clean old cache entries
+      if (cache.size > MAX_CACHE_SIZE) {
+        const firstKey = cache.keys().next().value;
+        cache.delete(firstKey);
+      }
+    }
+    
+    return response;
+  },
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Dispatch custom event for auth modal
+      window.dispatchEvent(new CustomEvent('auth:required'));
     }
     return Promise.reject(error);
   }
@@ -48,8 +104,8 @@ export const authAPI = {
 
 // User API
 export const userAPI = {
-  getProfile: () => api.get('/users/profile'),
-  getAllUsers: () => api.get('/users')
+  getProfile: () => api.get('/user/profile'),
+  getAllUsers: () => api.get('/user/admin/users')
 };
 
 // Product API

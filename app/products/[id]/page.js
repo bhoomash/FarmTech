@@ -7,6 +7,10 @@ import { useCart } from '@/context/CartContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ProductCard from '@/components/products/ProductCard';
 import toast from 'react-hot-toast';
+import { getCachedData, prefetchProducts } from '@/lib/prefetch';
+
+const PRODUCT_CACHE_KEY = 'farmtech_product_cache';
+const CACHE_DURATION = 60 * 1000; // 1 minute
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -24,10 +28,54 @@ export default function ProductDetailPage() {
     if (!params.id) return;
 
     const fetchProduct = async () => {
+      const localCacheKey = `${PRODUCT_CACHE_KEY}_${params.id}`;
+
+      // Try localStorage cache first for instant render
       try {
-        setLoading(true);
+        const cached = localStorage.getItem(localCacheKey);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          const isFresh = Date.now() - timestamp < CACHE_DURATION;
+          
+          if (data) {
+            setProduct(data);
+            setLoading(false);
+            if (isFresh) return;
+          }
+        }
+      } catch (e) {
+        // Ignore localStorage errors
+      }
+
+      try {
+        setLoading(product === null);
+        
+        // Check for prefetched data first
+        const cachedProduct = getCachedData(`product:${params.id}`);
+        if (cachedProduct) {
+          setProduct(cachedProduct);
+          setLoading(false);
+          // Also save to localStorage
+          try {
+            localStorage.setItem(localCacheKey, JSON.stringify({
+              data: cachedProduct,
+              timestamp: Date.now()
+            }));
+          } catch (e) {}
+          return;
+        }
+        
         const response = await productAPI.getProduct(params.id);
-        setProduct(response.data.data);
+        const productData = response.data.data;
+        setProduct(productData);
+        
+        // Cache to localStorage
+        try {
+          localStorage.setItem(localCacheKey, JSON.stringify({
+            data: productData,
+            timestamp: Date.now()
+          }));
+        } catch (e) {}
       } catch (error) {
         console.error('Failed to fetch product:', error);
         toast.error('Product not found');
@@ -47,6 +95,18 @@ export default function ProductDetailPage() {
     const fetchRelatedProducts = async () => {
       try {
         setLoadingRelated(true);
+        
+        // Check for cached products first
+        const cachedProducts = getCachedData(`products:${JSON.stringify({ category: product.category })}`);
+        if (cachedProducts) {
+          const filtered = cachedProducts
+            .filter(p => p._id !== product._id)
+            .slice(0, 4);
+          setRelatedProducts(filtered);
+          setLoadingRelated(false);
+          return;
+        }
+        
         const response = await productAPI.getProducts({ category: product.category });
         // Filter out current product and limit to 4 items
         const filtered = response.data.data

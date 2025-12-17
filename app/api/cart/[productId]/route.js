@@ -27,8 +27,10 @@ export async function PUT(request, { params }) {
       );
     }
 
+    const { productId } = await params;
+
     // Check product stock
-    const product = await Product.findById(params.productId);
+    const product = await Product.findById(productId);
     if (!product) {
       return NextResponse.json(
         { message: 'Product not found' },
@@ -53,7 +55,7 @@ export async function PUT(request, { params }) {
     }
 
     const item = cart.items.find(
-      (item) => item.product.toString() === params.productId
+      (item) => item.product.toString() === productId
     );
 
     if (!item) {
@@ -99,6 +101,8 @@ export async function DELETE(request, { params }) {
 
     await dbConnect();
 
+    const { productId } = await params;
+
     const cart = await Cart.findOne({ user: auth.user._id });
     if (!cart) {
       return NextResponse.json(
@@ -108,7 +112,7 @@ export async function DELETE(request, { params }) {
     }
 
     cart.items = cart.items.filter(
-      (item) => item.product.toString() !== params.productId
+      (item) => item.product.toString() !== productId
     );
 
     await cart.save();

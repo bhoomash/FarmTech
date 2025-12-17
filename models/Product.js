@@ -49,6 +49,13 @@ const productSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for performance
+productSchema.index({ category: 1 });
+productSchema.index({ name: 'text', description: 'text' });
+productSchema.index({ price: 1 });
+productSchema.index({ isActive: 1, category: 1 });
+productSchema.index({ createdAt: -1 });
+
 // Virtual for final price after discount
 productSchema.virtual('finalPrice').get(function () {
   return this.price - (this.price * this.discount) / 100;

@@ -17,7 +17,7 @@ export default function VerifyOTPPage() {
   useEffect(() => {
     const pendingEmail = localStorage.getItem('pendingEmail');
     if (!pendingEmail) {
-      router.push('/login');
+      router.push('/');
       return;
     }
     setEmail(pendingEmail);
@@ -116,10 +116,10 @@ export default function VerifyOTPPage() {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => router.push('/login')}
+            onClick={() => router.push('/')}
             className="text-primary-600 hover:underline text-sm"
           >
-            Back to Login
+            Back to Home
           </button>
         </div>
 

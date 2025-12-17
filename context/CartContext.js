@@ -1,8 +1,9 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { cartAPI } from '@/services/api';
 import { useAuth } from './AuthContext';
+import { invalidateCartCache } from '@/lib/prefetch';
 
 const CartContext = createContext();
 
@@ -19,8 +20,8 @@ export const CartProvider = ({ children }) => {
   const [cart, setCart] = useState({ items: [], subtotal: 0, discount: 0, total: 0 });
   const [loading, setLoading] = useState(false);
 
-  // Fetch cart
-  const fetchCart = async () => {
+  // Fetch cart - with prefetch optimization
+  const fetchCart = useCallback(async () => {
     if (!isAuthenticated) {
       setCart({ items: [], subtotal: 0, discount: 0, total: 0 });
       return;
@@ -28,6 +29,28 @@ export const CartProvider = ({ children }) => {
 
     try {
       setLoading(true);
+      
+      // Check for prefetched cart data (from login optimization)
+      const prefetchedData = sessionStorage.getItem('prefetchedCart');
+      if (prefetchedData) {
+        const { data, timestamp } = JSON.parse(prefetchedData);
+        // Use prefetched data if less than 30 seconds old
+        if (Date.now() - timestamp < 30000) {
+          const { cart: cartData, subtotal, discount, total } = data;
+          setCart({
+            items: cartData?.items || [],
+            subtotal: subtotal || 0,
+            discount: discount || 0,
+            total: total || 0
+          });
+          sessionStorage.removeItem('prefetchedCart');
+          setLoading(false);
+          return;
+        }
+        sessionStorage.removeItem('prefetchedCart');
+      }
+
+      // Fetch fresh cart data
       const response = await cartAPI.getCart();
       const { cart: cartData, subtotal, discount, total } = response.data.data;
       setCart({
@@ -42,39 +65,15 @@ export const CartProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Load cart on mount and when auth changes
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setCart({ items: [], subtotal: 0, discount: 0, total: 0 });
-      return;
-    }
-
-    const loadCart = async () => {
-      try {
-        setLoading(true);
-        const response = await cartAPI.getCart();
-        const { cart: cartData, subtotal, discount, total } = response.data.data;
-        setCart({
-          items: cartData?.items || [],
-          subtotal: subtotal || 0,
-          discount: discount || 0,
-          total: total || 0
-        });
-      } catch (error) {
-        console.error('Failed to fetch cart:', error);
-        setCart({ items: [], subtotal: 0, discount: 0, total: 0 });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCart();
   }, [isAuthenticated]);
 
+  // Load cart on mount and when auth changes - use the memoized fetchCart
+  useEffect(() => {
+    fetchCart();
+  }, [fetchCart]);
+
   // Add to cart
-  const addToCart = async (productId, quantity = 1) => {
+  const addToCart = useCallback(async (productId, quantity = 1) => {
     try {
       const response = await cartAPI.addToCart({ productId, quantity });
       const { cart: cartData, subtotal, discount, total } = response.data.data;
@@ -84,6 +83,7 @@ export const CartProvider = ({ children }) => {
         discount: discount || 0,
         total: total || 0
       });
+      invalidateCartCache(); // Clear prefetch cache
       return { success: true, message: 'Added to cart' };
     } catch (error) {
       return {
@@ -91,10 +91,10 @@ export const CartProvider = ({ children }) => {
         message: error.response?.data?.message || 'Failed to add to cart'
       };
     }
-  };
+  }, []);
 
   // Update cart item
-  const updateCartItem = async (productId, quantity) => {
+  const updateCartItem = useCallback(async (productId, quantity) => {
     try {
       const response = await cartAPI.updateCart({ productId, quantity });
       const { cart: cartData, subtotal, discount, total } = response.data.data;
@@ -104,6 +104,7 @@ export const CartProvider = ({ children }) => {
         discount: discount || 0,
         total: total || 0
       });
+      invalidateCartCache(); // Clear prefetch cache
       return { success: true };
     } catch (error) {
       return {
@@ -111,10 +112,10 @@ export const CartProvider = ({ children }) => {
         message: error.response?.data?.message || 'Failed to update cart'
       };
     }
-  };
+  }, []);
 
   // Remove from cart
-  const removeFromCart = async (productId) => {
+  const removeFromCart = useCallback(async (productId) => {
     try {
       const response = await cartAPI.removeFromCart(productId);
       const { cart: cartData, subtotal, discount, total } = response.data.data;
@@ -124,6 +125,7 @@ export const CartProvider = ({ children }) => {
         discount: discount || 0,
         total: total || 0
       });
+      invalidateCartCache(); // Clear prefetch cache
       return { success: true, message: 'Removed from cart' };
     } catch (error) {
       return {
@@ -131,23 +133,27 @@ export const CartProvider = ({ children }) => {
         message: error.response?.data?.message || 'Failed to remove from cart'
       };
     }
-  };
+  }, []);
 
   // Clear cart
-  const clearCart = async () => {
+  const clearCart = useCallback(async () => {
     try {
       await cartAPI.clearCart();
       setCart({ items: [], subtotal: 0, discount: 0, total: 0 });
+      invalidateCartCache(); // Clear prefetch cache
       return { success: true };
     } catch (error) {
       return { success: false };
     }
-  };
+  }, []);
 
-  // Get cart item count
-  const cartItemCount = cart?.items?.reduce((total, item) => total + item.quantity, 0) || 0;
+  // Get cart item count - memoized
+  const cartItemCount = useMemo(() => 
+    cart?.items?.reduce((total, item) => total + item.quantity, 0) || 0,
+    [cart.items]
+  );
 
-  const value = {
+  const value = useMemo(() => ({
     cart,
     loading,
     cartItemCount,
@@ -156,7 +162,7 @@ export const CartProvider = ({ children }) => {
     updateCartItem,
     removeFromCart,
     clearCart
-  };
+  }), [cart, loading, cartItemCount, fetchCart, addToCart, updateCartItem, removeFromCart, clearCart]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };

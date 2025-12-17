@@ -27,8 +27,9 @@ export async function POST(request) {
       );
     }
 
-    // Verify OTP
-    if (!user.verifyOTP(otp)) {
+    // Verify OTP (now async due to bcrypt comparison)
+    const isValidOTP = await user.verifyOTP(otp);
+    if (!isValidOTP) {
       return NextResponse.json(
         { message: 'Invalid or expired OTP' },
         { status: 400 }
@@ -44,14 +45,24 @@ export async function POST(request) {
     // Generate JWT token
     const token = generateToken(user._id);
 
-    // Get user without sensitive fields
-    const userWithoutOTP = await User.findById(user._id);
+    // Return user without sensitive fields (already cleared above)
+    const userResponse = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      address: user.address,
+      role: user.role,
+      isVerified: user.isVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
 
     return NextResponse.json(
       {
         message: 'Login successful',
         token,
-        user: userWithoutOTP,
+        user: userResponse,
       },
       { status: 200 }
     );

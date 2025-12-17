@@ -38,7 +38,7 @@ export async function POST(request) {
       name,
       email,
       password,
-      role: 'customer',
+      role: 'user',
     });
 
     // Generate OTP

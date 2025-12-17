@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI, userAPI } from '@/services/api';
+import { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { authAPI, userAPI, cartAPI } from '@/services/api';
 
 const AuthContext = createContext();
 
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Send OTP
-  const sendOTP = async (email, name) => {
+  const sendOTP = useCallback(async (email, name) => {
     try {
       const response = await authAPI.sendOTP({ email, name });
       return { success: true, message: response.data.message };
@@ -43,39 +43,55 @@ export const AuthProvider = ({ children }) => {
         message: error.response?.data?.message || 'Failed to send OTP'
       };
     }
-  };
+  }, []);
 
-  // Verify OTP and login
-  const verifyOTP = async (email, otp) => {
+  // Verify OTP and login - optimized with parallel cart prefetch
+  const verifyOTP = useCallback(async (email, otp) => {
     try {
       const response = await authAPI.verifyOTP({ email, otp });
-      const { token, user } = response.data;
+      const { token: newToken, user: newUser } = response.data;
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Store in localStorage first (fast sync operation)
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('user', JSON.stringify(newUser));
 
-      setToken(token);
-      setUser(user);
+      // Update state immediately
+      setToken(newToken);
+      setUser(newUser);
 
-      return { success: true, message: 'Login successful' };
+      // Prefetch cart in background (don't await - fire and forget)
+      // This will be ready when user navigates to cart
+      cartAPI.getCart().then(cartResponse => {
+        // Cache the cart data for CartContext to pick up
+        if (cartResponse.data?.data) {
+          sessionStorage.setItem('prefetchedCart', JSON.stringify({
+            data: cartResponse.data.data,
+            timestamp: Date.now()
+          }));
+        }
+      }).catch(() => {
+        // Silently fail - CartContext will fetch if needed
+      });
+
+      return { success: true, message: 'Login successful', user: newUser };
     } catch (error) {
       return {
         success: false,
         message: error.response?.data?.message || 'Invalid OTP'
       };
     }
-  };
+  }, []);
 
   // Logout
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setToken(null);
     setUser(null);
-  };
+  }, []);
 
   // Refresh user profile
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     try {
       const response = await userAPI.getProfile();
       const userData = response.data.data;
@@ -84,27 +100,35 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Failed to refresh profile:', error);
     }
-  };
-
-  // Check if user is admin
-  const isAdmin = user?.role === 'admin';
+  }, []);
 
   // Functions to control auth modal
-  const openAuthModal = (mode = 'login') => {
+  const openAuthModal = useCallback((mode = 'login') => {
     setAuthModalMode(mode);
     setAuthModalOpen(true);
-  };
+  }, []);
 
-  const closeAuthModal = () => {
+  const closeAuthModal = useCallback(() => {
     setAuthModalOpen(false);
-  };
+  }, []);
 
-  const value = {
+  // Listen for auth:required events from API interceptor
+  useEffect(() => {
+    const handleAuthRequired = () => {
+      setAuthModalMode('login');
+      setAuthModalOpen(true);
+    };
+
+    window.addEventListener('auth:required', handleAuthRequired);
+    return () => window.removeEventListener('auth:required', handleAuthRequired);
+  }, []);
+
+  const value = useMemo(() => ({
     user,
     token,
     loading,
     isAuthenticated: !!token,
-    isAdmin,
+    isAdmin: user?.role === 'admin',
     sendOTP,
     verifyOTP,
     logout,
@@ -113,7 +137,7 @@ export const AuthProvider = ({ children }) => {
     authModalMode,
     openAuthModal,
     closeAuthModal
-  };
+  }), [user, token, loading, sendOTP, verifyOTP, logout, refreshProfile, authModalOpen, authModalMode, openAuthModal, closeAuthModal]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -24,7 +24,7 @@ export async function PUT(request, { params }) {
 
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await params;
     const { role } = await request.json();
 
     if (!['user', 'admin'].includes(role)) {
@@ -85,10 +85,10 @@ export async function DELETE(request, { params }) {
 
     await dbConnect();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Prevent deleting own account
-    if (id === auth.user.userId) {
+    if (id === auth.user._id?.toString() || id === auth.user.userId) {
       return NextResponse.json(
         { message: 'You cannot delete your own account' },
         { status: 400 }

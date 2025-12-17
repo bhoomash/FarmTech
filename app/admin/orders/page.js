@@ -1,30 +1,41 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { orderAPI } from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import toast from 'react-hot-toast';
+import { getCachedData } from '@/lib/prefetch';
 
 export default function AdminOrdersPage() {
   const router = useRouter();
   const { isAuthenticated, isAdmin, loading: authLoading } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
+
+  const fetchOrders = useCallback(async () => {
+    // Check for prefetched cache first
+    const cachedOrders = getCachedData('admin:orders');
+    if (cachedOrders && cachedOrders.length > 0) {
+      setOrders(cachedOrders);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await orderAPI.getAllOrders();
+      setOrders(response.data.data);
+    } catch (error) {
+      console.error('Failed to fetch orders:', error);
+      toast.error('Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const response = await orderAPI.getAllOrders();
-        setOrders(response.data.data);
-      } catch (error) {
-        console.error('Failed to fetch orders:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (!authLoading) {
       if (!isAuthenticated || !isAdmin) {
         router.push('/');
@@ -32,15 +43,26 @@ export default function AdminOrdersPage() {
       }
       fetchOrders();
     }
-  }, [isAuthenticated, isAdmin, authLoading, router]);
+  }, [isAuthenticated, isAdmin, authLoading, router, fetchOrders]);
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
+      setUpdatingOrderId(orderId);
       await orderAPI.updateOrderStatus(orderId, { orderStatus: newStatus });
-      alert('Order status updated successfully');
-      fetchOrders();
+      toast.success('Order status updated successfully');
+      // Update local state instead of refetching
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === orderId ? { ...order, orderStatus: newStatus } : order
+        )
+      );
     } catch (error) {
-      alert('Failed to update order status');
+      console.error('Failed to update order status:', error);
+      toast.error('Failed to update order status');
+      // Refetch to reset to correct state on error
+      fetchOrders();
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -109,7 +131,10 @@ export default function AdminOrdersPage() {
                     <select
                       value={order.orderStatus}
                       onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
-                      className="text-sm border border-gray-300 rounded px-2 py-1"
+                      disabled={updatingOrderId === order._id}
+                      className={`text-sm border border-gray-300 rounded px-2 py-1 ${
+                        updatingOrderId === order._id ? 'opacity-50 cursor-wait' : ''
+                      }`}
                     >
                       <option value="pending">Pending</option>
                       <option value="confirmed">Confirmed</option>

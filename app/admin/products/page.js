@@ -1,32 +1,43 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { productAPI } from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { getCachedData } from '@/lib/prefetch';
+import { useConfirm } from '@/components/ConfirmModal';
+import toast from 'react-hot-toast';
 
 export default function AdminProductsPage() {
   const router = useRouter();
   const { isAuthenticated, isAdmin, loading: authLoading } = useAuth();
+  const { confirm } = useConfirm();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const response = await productAPI.getProducts();
-        setProducts(response.data.data || []);
-      } catch (error) {
-        console.error('Failed to fetch products:', error);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchProducts = useCallback(async () => {
+    // Check for prefetched cache first
+    const cachedProducts = getCachedData('products:{}');
+    if (cachedProducts && cachedProducts.length > 0) {
+      setProducts(cachedProducts);
+      setLoading(false);
+      return;
+    }
 
+    try {
+      const response = await productAPI.getProducts();
+      setProducts(response.data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch products:', error);
+      toast.error('Failed to fetch products');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated || !isAdmin) {
         router.push('/');
@@ -34,19 +45,36 @@ export default function AdminProductsPage() {
       }
       fetchProducts();
     }
-  }, [isAuthenticated, isAdmin, authLoading, router]);
+  }, [isAuthenticated, isAdmin, authLoading, router, fetchProducts]);
 
   const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this product?')) {
+    const confirmed = await confirm({
+      title: 'Delete Product',
+      message: 'Are you sure you want to delete this product? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    
+    if (!confirmed) {
       return;
     }
 
     try {
       await productAPI.deleteProduct(id);
-      alert('Product deleted successfully');
-      fetchProducts();
+      toast.success('Product deleted successfully');
+      // Update local state instead of refetching
+      setProducts(prev => prev.filter(p => p._id !== id));
     } catch (error) {
-      alert('Failed to delete product');
+      console.error('Failed to delete product:', error);
+      if (error.response?.status === 404) {
+        toast.error('Product not found - it may have already been deleted');
+        // Remove from local state anyway
+        setProducts(prev => prev.filter(p => p._id !== id));
+      } else if (error.response?.status === 401 || error.response?.status === 403) {
+        toast.error('You are not authorized to delete products');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to delete product');
+      }
     }
   };
 

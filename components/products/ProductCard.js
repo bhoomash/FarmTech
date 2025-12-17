@@ -1,21 +1,33 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { useState } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import toast from 'react-hot-toast';
+import { prefetchProduct } from '@/lib/prefetch';
 
-export default function ProductCard({ product }) {
+const ProductCard = memo(function ProductCard({ product }) {
   const router = useRouter();
   const { addToCart } = useCart();
   const { isAuthenticated, openAuthModal } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
-  const finalPrice = product.price - (product.price * product.discount / 100);
+  const finalPrice = useMemo(() => 
+    product.price - (product.price * product.discount / 100),
+    [product.price, product.discount]
+  );
 
-  const handleBuyNow = async (e) => {
+  // Prefetch product details on hover
+  const handleMouseEnter = useCallback(() => {
+    router.prefetch(`/products/${product._id}`);
+    prefetchProduct(product._id);
+  }, [product._id, router]);
+
+  const handleBuyNow = useCallback(async (e) => {
     e.preventDefault();
     e.stopPropagation();
     
@@ -39,10 +51,13 @@ export default function ProductCard({ product }) {
     } else {
       toast.error(result.message);
     }
-  };
+  }, [isAuthenticated, product.stock, product._id, openAuthModal, addToCart, router]);
 
   return (
-    <div className="bg-white overflow-hidden transition-all duration-200 relative">
+    <div 
+      className="bg-white overflow-hidden transition-all duration-200 relative"
+      onMouseEnter={handleMouseEnter}
+    >
       <Link href={`/products/${product._id}`}>
         <div className="relative h-36 sm:h-48 bg-neutral-50">
           {product.discount > 0 && (
@@ -52,14 +67,25 @@ export default function ProductCard({ product }) {
               </div>
             </div>
           )}
-          <img
-            src={product.image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
-            }}
-          />
+          {!imageError ? (
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover"
+              loading="lazy"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <Image
+              src="https://via.placeholder.com/400x300?text=No+Image"
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover"
+            />
+          )}
         </div>
       </Link>
 
@@ -96,4 +122,6 @@ export default function ProductCard({ product }) {
       </div>
     </div>
   );
-}
+});
+
+export default ProductCard;

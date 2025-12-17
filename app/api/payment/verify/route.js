@@ -22,7 +22,11 @@ export async function POST(request) {
       .update(text)
       .digest('hex');
 
-    const isValid = expectedSignature === razorpaySignature;
+    // Use timing-safe comparison to prevent timing attacks
+    const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+    const signatureBuffer = Buffer.from(razorpaySignature, 'hex');
+    const isValid = expectedBuffer.length === signatureBuffer.length && 
+      crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
 
     if (!isValid) {
       return NextResponse.json(

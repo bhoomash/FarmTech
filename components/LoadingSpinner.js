@@ -1,9 +1,19 @@
 'use client';
 
+import Image from 'next/image';
+
 export default function LoadingSpinner() {
   return (
     <div className="flex justify-center items-center py-12">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <Image 
+        src="/logo.png" 
+        alt="Loading" 
+        width={48} 
+        height={48}
+        priority
+        className="animate-pulse"
+        style={{ width: 'auto', height: 'auto' }}
+      />
     </div>
   );
 }

@@ -5,6 +5,11 @@ import { useSearchParams } from 'next/navigation';
 import ProductCard from '@/components/products/ProductCard';
 import { productAPI } from '@/services/api';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { getCachedData } from '@/lib/prefetch';
+
+// Cache key for localStorage
+const PRODUCTS_CACHE_KEY = 'farmtech_products_list';
+const CACHE_DURATION = 60000; // 1 minute
 
 function ProductsContent() {
   const searchParams = useSearchParams();
@@ -35,19 +40,79 @@ function ProductsContent() {
 
   useEffect(() => {
     const fetchProducts = async () => {
+      const params = {};
+      if (filters.category) params.category = filters.category;
+      if (filters.minPrice) params.minPrice = filters.minPrice;
+      if (filters.maxPrice) params.maxPrice = filters.maxPrice;
+      if (filters.search) params.search = filters.search;
+
+      const localCacheKey = `${PRODUCTS_CACHE_KEY}_${JSON.stringify(params)}`;
+
+      // Try localStorage cache first for instant render
       try {
-        setLoading(true);
-        const params = {};
-        if (filters.category) params.category = filters.category;
-        if (filters.minPrice) params.minPrice = filters.minPrice;
-        if (filters.maxPrice) params.maxPrice = filters.maxPrice;
-        if (filters.search) params.search = filters.search;
+        const cached = localStorage.getItem(localCacheKey);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          const isFresh = Date.now() - timestamp < CACHE_DURATION;
+          
+          if (data && data.length > 0) {
+            setProducts(data);
+            setLoading(false);
+            if (isFresh) return;
+          }
+        }
+      } catch (e) {
+        // Ignore localStorage errors
+      }
+
+      try {
+        setLoading(products.length === 0);
+
+        // Check for prefetched data from hover or navigation
+        const cacheKey = `products:${JSON.stringify(params)}`;
+        const cachedData = getCachedData(cacheKey);
+        if (cachedData) {
+          setProducts(cachedData);
+          setLoading(false);
+          // Also save to localStorage
+          try {
+            localStorage.setItem(localCacheKey, JSON.stringify({
+              data: cachedData,
+              timestamp: Date.now()
+            }));
+          } catch (e) {}
+          return;
+        }
+
+        // Check for prefetched search results
+        if (filters.search) {
+          const prefetchedData = sessionStorage.getItem('prefetchedSearch');
+          if (prefetchedData) {
+            const { query, data, timestamp } = JSON.parse(prefetchedData);
+            if (query === filters.search && Date.now() - timestamp < 30000) {
+              setProducts(data);
+              sessionStorage.removeItem('prefetchedSearch');
+              setLoading(false);
+              return;
+            }
+            sessionStorage.removeItem('prefetchedSearch');
+          }
+        }
 
         const response = await productAPI.getProducts(params);
-        setProducts(response.data.data || []);
+        const newProducts = response.data.data || [];
+        setProducts(newProducts);
+        
+        // Cache to localStorage
+        try {
+          localStorage.setItem(localCacheKey, JSON.stringify({
+            data: newProducts,
+            timestamp: Date.now()
+          }));
+        } catch (e) {}
       } catch (error) {
         console.error('Failed to fetch products:', error);
-        setProducts([]);
+        if (products.length === 0) setProducts([]);
       } finally {
         setLoading(false);
       }
@@ -81,7 +146,7 @@ function ProductsContent() {
         </div>
         <button
           onClick={clearFilters}
-          className="text-sm text-primary-600 hover:text-primary-700 font-medium underline"
+          className="text-sm text-green-600 hover:text-green-700 font-medium underline"
         >
           Clear All
         </button>
@@ -98,7 +163,7 @@ function ProductsContent() {
               value=""
               checked={filters.category === ''}
               onChange={(e) => handleFilterChange('category', e.target.value)}
-              className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+              className="w-4 h-4 text-green-600 focus:ring-green-500"
             />
             <span className="text-sm text-neutral-700">All Products</span>
           </label>
@@ -110,7 +175,7 @@ function ProductsContent() {
                 value={cat}
                 checked={filters.category === cat}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
-                className="w-4 h-4 text-primary-600 focus:ring-primary-500"
+                className="w-4 h-4 text-green-600 focus:ring-green-500"
               />
               <span className="text-sm text-neutral-700">{cat}</span>
             </label>
@@ -127,7 +192,7 @@ function ProductsContent() {
             value={filters.minPrice}
             onChange={(e) => handleFilterChange('minPrice', e.target.value)}
             placeholder="Min ₹"
-            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
           />
           <span className="text-sm text-neutral-500">to</span>
           <input
@@ -135,7 +200,7 @@ function ProductsContent() {
             value={filters.maxPrice}
             onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
             placeholder="Max ₹"
-            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+            className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
           />
         </div>
         {(filters.minPrice || filters.maxPrice) && (
@@ -157,7 +222,7 @@ function ProductsContent() {
 
   return (
     <div className="bg-neutral-50 min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-12">
         {/* Mobile Filter Button */}
         <div className="lg:hidden mb-4">
           <button
@@ -169,7 +234,7 @@ function ProductsContent() {
             </svg>
             <span className="text-sm font-medium text-neutral-900">Filters</span>
             {(filters.category || filters.minPrice || filters.maxPrice) && (
-              <span className="bg-primary-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="bg-green-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                 {[filters.category, filters.minPrice, filters.maxPrice].filter(Boolean).length}
               </span>
             )}
@@ -210,7 +275,7 @@ function ProductsContent() {
                   <FilterContent />
                   <button
                     onClick={() => setFilterDrawerOpen(false)}
-                    className="w-full mt-6 px-4 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+                    className="w-full mt-6 px-4 py-3 bg-transparent text-green-600 font-semibold rounded-lg border-2 border-green-600 hover:bg-green-50 transition-colors"
                   >
                     Show Results
                   </button>

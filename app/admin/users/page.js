@@ -1,30 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { useConfirm } from '@/components/ConfirmModal';
 import toast from 'react-hot-toast';
+import { getCachedData } from '@/lib/prefetch';
 
 export default function UsersManagementPage() {
   const { isAuthenticated, isAdmin } = useAuth();
   const router = useRouter();
+  const { confirm } = useConfirm();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
 
-  useEffect(() => {
-    if (!isAuthenticated || !isAdmin) {
-      router.push('/');
+  const fetchUsers = useCallback(async () => {
+    // Check for prefetched cache first
+    const cachedUsers = getCachedData('admin:users');
+    if (cachedUsers && cachedUsers.length > 0) {
+      setUsers(cachedUsers);
+      setLoading(false);
       return;
     }
-    fetchUsers();
-  }, [isAuthenticated, isAdmin, router]);
 
-  const fetchUsers = async () => {
     try {
-      setLoading(true);
       const token = localStorage.getItem('token');
       const response = await fetch('/api/user/admin/users', {
         headers: {
@@ -44,10 +46,25 @@ export default function UsersManagementPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || !isAdmin) {
+      router.push('/');
+      return;
+    }
+    fetchUsers();
+  }, [isAuthenticated, isAdmin, router, fetchUsers]);
 
   const handleRoleChange = async (userId, newRole) => {
-    if (!confirm(`Are you sure you want to change this user's role to ${newRole}?`)) {
+    const confirmed = await confirm({
+      title: 'Change User Role',
+      message: `Are you sure you want to change this user's role to ${newRole}?`,
+      confirmText: 'Change Role',
+      variant: 'warning'
+    });
+    
+    if (!confirmed) {
       return;
     }
 
@@ -65,7 +82,8 @@ export default function UsersManagementPage() {
       const data = await response.json();
       if (response.ok) {
         toast.success('User role updated successfully');
-        fetchUsers();
+        // Update local state instead of refetching
+        setUsers(prev => prev.map(u => u._id === userId ? { ...u, role: newRole } : u));
       } else {
         toast.error(data.message || 'Failed to update user role');
       }
@@ -76,7 +94,14 @@ export default function UsersManagementPage() {
   };
 
   const handleDeleteUser = async (userId) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+    const confirmed = await confirm({
+      title: 'Delete User',
+      message: 'Are you sure you want to delete this user? This action cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    
+    if (!confirmed) {
       return;
     }
 
@@ -92,7 +117,8 @@ export default function UsersManagementPage() {
       const data = await response.json();
       if (response.ok) {
         toast.success('User deleted successfully');
-        fetchUsers();
+        // Update local state instead of refetching
+        setUsers(prev => prev.filter(u => u._id !== userId));
       } else {
         toast.error(data.message || 'Failed to delete user');
       }

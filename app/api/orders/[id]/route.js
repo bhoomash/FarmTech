@@ -16,7 +16,9 @@ export async function GET(request, { params }) {
 
     await dbConnect();
 
-    const order = await Order.findById(params.id)
+    const { id } = await params;
+
+    const order = await Order.findById(id)
       .populate('user', 'name email')
       .populate('items.product');
 
@@ -72,10 +74,11 @@ export async function PUT(request, { params }) {
 
     await dbConnect();
 
+    const { id } = await params;
     const { orderStatus } = await request.json();
 
     const order = await Order.findByIdAndUpdate(
-      params.id,
+      id,
       { orderStatus },
       { new: true, runValidators: true }
     ).populate('user', 'name email').populate('items.product');

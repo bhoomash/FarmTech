@@ -127,6 +127,7 @@ export default function CartPage() {
         <div className="max-w-4xl mx-auto px-4 py-4">
           <button
             onClick={() => router.push('/checkout')}
+            onMouseEnter={() => router.prefetch('/checkout')}
             className="w-full bg-black text-white py-4 rounded-lg hover:bg-neutral-800 transition font-semibold text-lg flex items-center justify-between px-6"
           >
             <span>₹{cart.total?.toFixed(2) || '0.00'}</span>

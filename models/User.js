@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['customer', 'admin', 'user'],
+      enum: ['user', 'admin'],
       default: 'user',
     },
     otp: {
@@ -55,6 +55,10 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for performance (email index already created by unique: true)
+userSchema.index({ role: 1 });
+userSchema.index({ createdAt: -1 });
+
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password') || !this.password) {
@@ -70,23 +74,24 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Generate OTP
-userSchema.methods.generateOTP = function () {
+// Generate OTP - hash before storing
+userSchema.methods.generateOTP = async function () {
   const otp = crypto.randomInt(100000, 999999).toString();
-  this.otp = otp;
+  // Hash OTP before storing (like password)
+  this.otp = await bcrypt.hash(otp, 10);
   this.otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-  return otp;
+  return otp; // Return plain OTP to send via email
 };
 
-// Verify OTP
-userSchema.methods.verifyOTP = function (otp) {
+// Verify OTP using bcrypt compare
+userSchema.methods.verifyOTP = async function (otp) {
   if (!this.otp || !this.otpExpiry) {
     return false;
   }
   if (this.otpExpiry < new Date()) {
     return false;
   }
-  return this.otp === otp;
+  return await bcrypt.compare(otp, this.otp);
 };
 
 export default mongoose.models.User || mongoose.model('User', userSchema);
