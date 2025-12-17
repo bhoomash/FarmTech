@@ -19,6 +19,7 @@
     "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
+    "leaflet": "^1.9.4",
     "mongoose": "^8.9.3",
     "next": "15.5.9",
     "nodemailer": "^7.0.11",

@@ -1,12 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
 import { orderAPI, paymentAPI } from '@/services/api';
 import { validateData, shippingAddressSchema } from '@/utils/validators';
 import toast from 'react-hot-toast';
+import dynamic from 'next/dynamic';
+
+// Dynamically import Leaflet components (they require window object)
+const MapComponent = dynamic(() => import('@/components/checkout/LocationMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+    </div>
+  )
+});
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -14,6 +25,9 @@ export default function CheckoutPage() {
   const { cart, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [coordinates, setCoordinates] = useState(null);
   const [shippingAddress, setShippingAddress] = useState({
     address: '',
     city: '',
@@ -45,6 +59,109 @@ export default function CheckoutPage() {
       [e.target.name]: e.target.value
     });
     setErrors({ ...errors, [e.target.name]: '' });
+  };
+
+  // Get user's current location using browser Geolocation API
+  const handleGetLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setLocationLoading(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        setCoordinates({ lat: latitude, lng: longitude });
+        setShowMap(true);
+        
+        // Reverse geocode to get address
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+            {
+              headers: {
+                'Accept-Language': 'en',
+                'User-Agent': 'FarmTech-App'
+              }
+            }
+          );
+          
+          const data = await response.json();
+          
+          if (data && data.address) {
+            const addr = data.address;
+            setShippingAddress(prev => ({
+              ...prev,
+              address: [addr.road, addr.neighbourhood, addr.suburb].filter(Boolean).join(', ') || data.display_name?.split(',').slice(0, 2).join(',') || '',
+              city: addr.city || addr.town || addr.village || addr.county || '',
+              state: addr.state || '',
+              pincode: addr.postcode || ''
+            }));
+            toast.success('Location detected! Please verify the address.');
+          }
+        } catch (error) {
+          console.error('Reverse geocoding error:', error);
+          toast.error('Failed to get address. Please enter manually.');
+        }
+        
+        setLocationLoading(false);
+      },
+      (error) => {
+        setLocationLoading(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            toast.error('Location permission denied. Please enable it in your browser settings.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            toast.error('Location information is unavailable.');
+            break;
+          case error.TIMEOUT:
+            toast.error('Location request timed out.');
+            break;
+          default:
+            toast.error('An error occurred while getting your location.');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  };
+
+  // Handle map click to update location
+  const handleMapClick = async (lat, lng) => {
+    setCoordinates({ lat, lng });
+    
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+        {
+          headers: {
+            'Accept-Language': 'en',
+            'User-Agent': 'FarmTech-App'
+          }
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data && data.address) {
+        const addr = data.address;
+        setShippingAddress(prev => ({
+          ...prev,
+          address: [addr.road, addr.neighbourhood, addr.suburb].filter(Boolean).join(', ') || data.display_name?.split(',').slice(0, 2).join(',') || '',
+          city: addr.city || addr.town || addr.village || addr.county || '',
+          state: addr.state || '',
+          pincode: addr.postcode || ''
+        }));
+      }
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+    }
   };
 
   const loadRazorpayScript = () => {
@@ -157,7 +274,43 @@ export default function CheckoutPage() {
         {/* Shipping Form */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-6">Shipping Address</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold">Shipping Address</h2>
+              <button
+                type="button"
+                onClick={handleGetLocation}
+                disabled={locationLoading}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-600 rounded-lg hover:bg-primary-100 transition disabled:opacity-50"
+              >
+                {locationLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                    <span>Detecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span>Use My Location</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Map Component */}
+            {showMap && coordinates && (
+              <div className="mb-6">
+                <div className="text-sm text-gray-600 mb-2">
+                  Click on the map to adjust your location
+                </div>
+                <MapComponent 
+                  coordinates={coordinates} 
+                  onMapClick={handleMapClick}
+                />
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>

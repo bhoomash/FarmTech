@@ -24,6 +24,11 @@ export default function ProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
 
+  // Prefetch checkout page for faster Buy Now navigation
+  useEffect(() => {
+    router.prefetch('/checkout');
+  }, [router]);
+
   useEffect(() => {
     if (!params.id) return;
 
@@ -137,14 +142,19 @@ export default function ProductDetailPage() {
 
   const handleBuyNow = async () => {
     setBuyingNow(true);
-    const result = await addToCart(product._id);
-    setBuyingNow(false);
-
-    if (result.success) {
-      router.push('/checkout');
-    } else {
-      toast.error(result.message);
-    }
+    
+    // Navigate immediately for faster perceived performance
+    // The cart will update in the background
+    router.push('/checkout');
+    
+    // Add to cart in parallel - don't wait for it
+    addToCart(product._id).then(result => {
+      if (!result.success) {
+        toast.error(result.message);
+      }
+    }).finally(() => {
+      setBuyingNow(false);
+    });
   };
 
   const handleIncreaseQuantity = async () => {
@@ -190,7 +200,7 @@ export default function ProductDetailPage() {
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-[500px] object-cover"
+                className="w-full h-[325px] md:h-[500px] object-cover"
                 onError={(e) => {
                   e.target.src = 'https://via.placeholder.com/600x400?text=No+Image';
                 }}
