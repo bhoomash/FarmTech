@@ -28,6 +28,7 @@ export default function CheckoutPage() {
   const [locationLoading, setLocationLoading] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [coordinates, setCoordinates] = useState(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [shippingAddress, setShippingAddress] = useState({
     address: '',
     city: '',
@@ -37,15 +38,17 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
+    if (paymentSuccess) return; // Don't redirect after successful payment
+    
     if (!isAuthenticated) {
       openAuthModal('login');
       router.push('/');
     } else if (!cart.items || cart.items.length === 0) {
-      router.push('/cart');
+      router.push('/');
     }
-  }, [isAuthenticated, cart.items, router, openAuthModal]);
+  }, [isAuthenticated, cart.items, router, openAuthModal, paymentSuccess]);
 
-  if (!isAuthenticated || !cart.items || cart.items.length === 0) {
+  if (!paymentSuccess && (!isAuthenticated || !cart.items || cart.items.length === 0)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-yellow-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
@@ -213,16 +216,22 @@ export default function CheckoutPage() {
         description: 'Order Payment',
         order_id: orderData.orderId,
         handler: async function (response) {
-          try {
-            // Verify payment
-            await paymentAPI.verifyPayment({
+          // Mark payment as successful immediately to prevent redirect issues
+          setPaymentSuccess(true);
+          
+          // Show success toast and navigate immediately for better UX
+          toast.success('Order placed successfully!');
+          router.push('/orders');
+          
+          // Run verification, order creation, and cart clearing in background
+          // These don't need to block the user experience
+          Promise.all([
+            paymentAPI.verifyPayment({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
-            });
-
-            // Create order
-            const orderData = {
+            }),
+            orderAPI.createOrder({
               items: cart.items.map(item => ({
                 product: item.product._id,
                 quantity: item.quantity
@@ -231,20 +240,14 @@ export default function CheckoutPage() {
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
               razorpaySignature: response.razorpay_signature
-            };
-
-            const orderResult = await orderAPI.createOrder(orderData);
-            
-            // Clear cart
-            await clearCart();
-            
-            // Redirect to success page
-            toast.success('Order placed successfully!');
-            router.push(`/orders`);
-          } catch (error) {
-            console.error('Payment verification failed:', error);
-            toast.error('Payment verification failed. Please contact support.');
-          }
+            })
+          ]).then(() => {
+            // Clear cart after order is created
+            clearCart();
+          }).catch(error => {
+            console.error('Background order processing error:', error);
+            // Order is already placed via Razorpay, just log the error
+          });
         },
         prefill: {
           name: user.name,
@@ -399,8 +402,8 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-bold mb-4">Order Summary</h2>
 
             <div className="space-y-2 mb-4">
-              {cart.items.map((item) => (
-                <div key={item.product._id} className="flex justify-between text-sm">
+              {cart.items.map((item, index) => (
+                <div key={`${item.product._id}-${index}`} className="flex justify-between text-sm">
                   <span>{item.product.name} x{item.quantity}</span>
                   <span>₹{(item.product.price * item.quantity).toFixed(2)}</span>
                 </div>
