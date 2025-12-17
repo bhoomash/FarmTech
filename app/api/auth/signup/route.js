@@ -42,7 +42,7 @@ export async function POST(request) {
     });
 
     // Generate OTP
-    const otp = user.generateOTP();
+    const otp = await user.generateOTP();
     await user.save();
 
     // Send OTP via email
