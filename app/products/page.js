@@ -25,17 +25,26 @@ function ProductsContent() {
 
   const categories = ['Fertilizer', 'Seeds', 'Pesticides', 'Tools'];
 
+  // Sync filters from URL only on initial load or when URL actually changes
   useEffect(() => {
-    // Get search query and category from URL
-    const searchQuery = searchParams.get('search');
-    const categoryQuery = searchParams.get('category');
+    const searchQuery = searchParams.get('search') || '';
+    const categoryQuery = searchParams.get('category') || '';
     
-    if (searchQuery) {
-      setFilters(prev => ({ ...prev, search: searchQuery }));
-    }
-    if (categoryQuery) {
-      setFilters(prev => ({ ...prev, category: categoryQuery }));
-    }
+    setFilters(prev => {
+      // Only update if values are different to prevent unnecessary re-renders
+      const newSearch = searchQuery || prev.search;
+      const newCategory = categoryQuery || prev.category;
+      
+      if (prev.search === newSearch && prev.category === newCategory) {
+        return prev;
+      }
+      
+      return {
+        ...prev,
+        search: searchQuery,
+        category: categoryQuery
+      };
+    });
   }, [searchParams]);
 
   useEffect(() => {

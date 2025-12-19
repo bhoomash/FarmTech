@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { HiOutlineMail, HiOutlinePhone, HiOutlineLocationMarker } from 'react-icons/hi';
 
 export default function Footer() {
   return (
@@ -65,16 +66,16 @@ export default function Footer() {
             <h3 className="text-green-700 font-semibold mb-4">Contact</h3>
             <ul className="space-y-2.5 text-sm text-neutral-700">
               <li className="flex items-start gap-2">
-                <span>📧</span>
-                <span>bhoomash0000@gmail.com</span>
+                <HiOutlineMail className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <a href="mailto:bhoomash0000@gmail.com" className="hover:text-green-600 transition-colors">bhoomash0000@gmail.com</a>
               </li>
               <li className="flex items-start gap-2">
-                <span>📞</span>
-                <span>+91 9159342688</span>
+                <HiOutlinePhone className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <a href="tel:+919159342688" className="hover:text-green-600 transition-colors">+91 9159342688</a>
               </li>
               <li className="flex items-start gap-2">
-                <span>📍</span>
-                <span>Erode, Tamil Nadu, India</span>
+                <HiOutlineLocationMarker className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <a href="https://maps.google.com/?q=Ayeepalayam+Mariamman+Rice+Mill,+Erode,+Tamil+Nadu,+India" target="_blank" rel="noopener noreferrer" className="hover:text-green-600 transition-colors">Ayeepalayam Mariamman Rice Mill, Erode</a>
               </li>
             </ul>
           </div>

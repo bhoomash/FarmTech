@@ -18,6 +18,7 @@ const Navbar = memo(function Navbar() {
   const [productsDropdownOpen, setProductsDropdownOpen] = useState(false);
   const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const dropdownRef = useRef(null);
   const productsDropdownRef = useRef(null);
@@ -52,13 +53,13 @@ const Navbar = memo(function Navbar() {
       clearTimeout(prefetchTimeoutRef.current);
     }
 
-    const trimmedQuery = searchQuery.trim();
+    const trimmedQuery = searchInput.trim();
     
     if (trimmedQuery) {
       // Prefetch route immediately (faster navigation)
       router.prefetch(`/products?search=${encodeURIComponent(trimmedQuery)}`);
       
-      // Prefetch search results after 200ms (while user is still typing)
+      // Prefetch search results after 300ms (while user is still typing)
       prefetchTimeoutRef.current = setTimeout(async () => {
         try {
           const { productAPI } = await import('@/services/api');
@@ -74,12 +75,13 @@ const Navbar = memo(function Navbar() {
         } catch (error) {
           // Silently fail - products page will fetch if needed
         }
-      }, 200);
+      }, 300);
 
-      // Navigate after 400ms of no typing (reduced from 500ms)
+      // Navigate after 600ms of no typing (gives user more time to type)
       searchTimeoutRef.current = setTimeout(() => {
+        setSearchQuery(trimmedQuery);
         router.push(`/products?search=${encodeURIComponent(trimmedQuery)}`);
-      }, 400);
+      }, 600);
     }
 
     return () => {
@@ -90,19 +92,23 @@ const Navbar = memo(function Navbar() {
         clearTimeout(prefetchTimeoutRef.current);
       }
     };
-  }, [searchQuery, router]);
+  }, [searchInput, router]);
 
   const handleSearch = useCallback((e) => {
     e.preventDefault();
-    const trimmedQuery = searchQuery.trim();
+    const trimmedQuery = searchInput.trim();
     if (trimmedQuery) {
       // Clear any pending timeouts for immediate navigation
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
+      if (prefetchTimeoutRef.current) {
+        clearTimeout(prefetchTimeoutRef.current);
+      }
+      setSearchQuery(trimmedQuery);
       router.push(`/products?search=${encodeURIComponent(trimmedQuery)}`);
     }
-  }, [searchQuery, router]);
+  }, [searchInput, router]);
 
   const handleLogout = useCallback(() => {
     logout();
@@ -295,8 +301,8 @@ const Navbar = memo(function Navbar() {
               <input
                 type="text"
                 placeholder="Search 'Fertilizers, Seeds, Tools...'"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch(e)}
                 className="w-full pl-10 pr-4 py-2 text-sm border border-neutral-300 rounded-md focus:outline-none focus:border-neutral-400 transition-colors"
               />
@@ -463,8 +469,8 @@ const Navbar = memo(function Navbar() {
             <input
               type="text"
               placeholder="Search 'Fertilizers, Seeds, Tools...'"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-sm border border-neutral-300 rounded focus:outline-none focus:border-neutral-400"
             />
           </form>
