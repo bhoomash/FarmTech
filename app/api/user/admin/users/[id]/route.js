@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { protect, authorize } from '@/lib/auth';
+import { createErrorResponse, isValidObjectId } from '@/lib/apiHelpers';
 
 // PUT /api/user/admin/users/[id] - Update user role (Admin only)
 export async function PUT(request, { params }) {
@@ -25,6 +26,15 @@ export async function PUT(request, { params }) {
     await dbConnect();
 
     const { id } = await params;
+
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return NextResponse.json(
+        { message: 'Invalid user ID' },
+        { status: 400 }
+      );
+    }
+
     const { role } = await request.json();
 
     if (!['user', 'admin'].includes(role)) {
@@ -56,11 +66,7 @@ export async function PUT(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Update user error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to update user');
   }
 }
 
@@ -87,6 +93,14 @@ export async function DELETE(request, { params }) {
 
     const { id } = await params;
 
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return NextResponse.json(
+        { message: 'Invalid user ID' },
+        { status: 400 }
+      );
+    }
+
     // Prevent deleting own account
     if (id === auth.user._id?.toString() || id === auth.user.userId) {
       return NextResponse.json(
@@ -112,10 +126,6 @@ export async function DELETE(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Delete user error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to delete user');
   }
 }

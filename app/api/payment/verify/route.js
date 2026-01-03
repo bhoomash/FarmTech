@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { protect } from '@/lib/auth';
+import { createErrorResponse } from '@/lib/apiHelpers';
 
 // POST /api/payment/verify - Verify Razorpay payment
 export async function POST(request) {
@@ -14,6 +15,22 @@ export async function POST(request) {
     }
 
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = await request.json();
+
+    // Validate required fields
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+      return NextResponse.json(
+        { message: 'Missing payment verification data' },
+        { status: 400 }
+      );
+    }
+
+    // Validate field formats (basic sanity check)
+    if (typeof razorpayOrderId !== 'string' || typeof razorpayPaymentId !== 'string' || typeof razorpaySignature !== 'string') {
+      return NextResponse.json(
+        { message: 'Invalid payment data format' },
+        { status: 400 }
+      );
+    }
 
     // Verify signature
     const text = `${razorpayOrderId}|${razorpayPaymentId}`;
@@ -40,10 +57,6 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Verify payment error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Payment verification failed');
   }
 }

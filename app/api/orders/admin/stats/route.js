@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Order from '@/models/Order';
 import { protect, authorize } from '@/lib/auth';
+import { createErrorResponse } from '@/lib/apiHelpers';
 
 // GET /api/orders/admin/stats - Get admin statistics
 export async function GET(request) {
@@ -24,26 +25,30 @@ export async function GET(request) {
 
     await dbConnect();
 
-    const orders = await Order.find();
+    // Use aggregation for better performance
+    const stats = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: '$total' },
+          totalOrders: { $sum: 1 }
+        }
+      }
+    ]);
 
-    // Calculate total revenue
-    const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+    const { totalRevenue = 0, totalOrders = 0 } = stats[0] || {};
 
     return NextResponse.json(
       {
         success: true,
         data: {
           totalRevenue,
-          totalOrders: orders.length,
+          totalOrders,
         }
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get stats error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch statistics');
   }
 }

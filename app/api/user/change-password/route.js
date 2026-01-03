@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { protect } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
+import { createErrorResponse, checkRateLimit, getClientIP } from '@/lib/apiHelpers';
 
 // PUT /api/user/change-password - Change user password
 export async function PUT(request) {
@@ -12,6 +13,16 @@ export async function PUT(request) {
       return NextResponse.json(
         { message: auth.message },
         { status: auth.status }
+      );
+    }
+
+    // Rate limiting: 5 attempts per 15 minutes
+    const clientIP = getClientIP(request);
+    const rateLimitResult = checkRateLimit(`password_change_${clientIP}`, 5, 15 * 60 * 1000);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { message: 'Too many password change attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(rateLimitResult.resetIn / 1000)) } }
       );
     }
 
@@ -27,9 +38,31 @@ export async function PUT(request) {
       );
     }
 
-    if (newPassword.length < 6) {
+    // Strong password validation
+    if (newPassword.length < 8) {
       return NextResponse.json(
-        { message: 'New password must be at least 6 characters' },
+        { message: 'New password must be at least 8 characters' },
+        { status: 400 }
+      );
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      return NextResponse.json(
+        { message: 'New password must contain at least one uppercase letter' },
+        { status: 400 }
+      );
+    }
+
+    if (!/[a-z]/.test(newPassword)) {
+      return NextResponse.json(
+        { message: 'New password must contain at least one lowercase letter' },
+        { status: 400 }
+      );
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      return NextResponse.json(
+        { message: 'New password must contain at least one number' },
         { status: 400 }
       );
     }
@@ -64,10 +97,6 @@ export async function PUT(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Change password error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to change password');
   }
 }

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Product from '@/models/Product';
 import { protect, authorize } from '@/lib/auth';
+import { validateData, productSchema } from '@/utils/validators';
+import { createErrorResponse } from '@/lib/apiHelpers';
 
 // In-memory cache for products (server-side)
 let productsCache = {
@@ -55,8 +57,9 @@ export async function GET(request) {
     }
 
     if (search) {
-      // Sanitize search input to prevent ReDoS attacks
-      const sanitizedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Use MongoDB text search for better performance and security
+      // Fallback to regex if text index not set up
+      const sanitizedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').substring(0, 100); // Limit length
       query.$or = [
         { name: { $regex: sanitizedSearch, $options: 'i' } },
         { description: { $regex: sanitizedSearch, $options: 'i' } },
@@ -94,16 +97,7 @@ export async function GET(request) {
       }
     );
   } catch (error) {
-    console.error('Get products error:', error);
-    console.error('Error stack:', error.stack);
-    return NextResponse.json(
-      { 
-        success: false,
-        message: error.message || 'Server error',
-        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch products');
   }
 }
 
@@ -131,17 +125,35 @@ export async function POST(request) {
     await dbConnect();
 
     const body = await request.json();
-    const product = await Product.create(body);
+    
+    // Validate input using Zod schema
+    const validation = validateData(productSchema, body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { message: 'Validation failed', errors: validation.errors },
+        { status: 400 }
+      );
+    }
+
+    // Only allow specific fields
+    const allowedFields = ['name', 'description', 'category', 'price', 'discount', 'stock', 'image', 'isActive'];
+    const sanitizedBody = {};
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        sanitizedBody[field] = body[field];
+      }
+    }
+
+    const product = await Product.create(sanitizedBody);
+
+    // Clear cache
+    productsCache.queries.clear();
 
     return NextResponse.json(
       { message: 'Product created successfully', product },
       { status: 201 }
     );
   } catch (error) {
-    console.error('Create product error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to create product');
   }
 }

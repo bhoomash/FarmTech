@@ -2,13 +2,24 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Product from '@/models/Product';
 import { protect, authorize } from '@/lib/auth';
+import { isValidObjectId, createErrorResponse } from '@/lib/apiHelpers';
+import { validateData, productSchema } from '@/utils/validators';
 
 // GET /api/products/[id] - Get single product
 export async function GET(request, { params }) {
   try {
+    const { id } = await params;
+    
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return NextResponse.json(
+        { message: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
     await dbConnect();
 
-    const { id } = await params;
     const product = await Product.findById(id);
 
     if (!product) {
@@ -26,11 +37,7 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get product error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch product');
   }
 }
 
@@ -55,13 +62,41 @@ export async function PUT(request, { params }) {
       );
     }
 
+    const { id } = await params;
+    
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return NextResponse.json(
+        { message: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
     await dbConnect();
 
     const body = await request.json();
-    const { id } = await params;
+    
+    // Validate input using Zod schema (partial for updates)
+    const validation = validateData(productSchema.partial(), body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { message: 'Validation failed', errors: validation.errors },
+        { status: 400 }
+      );
+    }
+
+    // Only allow specific fields
+    const allowedFields = ['name', 'description', 'category', 'price', 'discount', 'stock', 'image', 'isActive'];
+    const sanitizedBody = {};
+    for (const field of allowedFields) {
+      if (body[field] !== undefined) {
+        sanitizedBody[field] = body[field];
+      }
+    }
+
     const product = await Product.findByIdAndUpdate(
       id,
-      body,
+      sanitizedBody,
       { new: true, runValidators: true }
     );
 
@@ -77,11 +112,7 @@ export async function PUT(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Update product error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to update product');
   }
 }
 
@@ -106,9 +137,18 @@ export async function DELETE(request, { params }) {
       );
     }
 
+    const { id } = await params;
+    
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return NextResponse.json(
+        { message: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
     await dbConnect();
 
-    const { id } = await params;
     const product = await Product.findByIdAndDelete(id);
 
     if (!product) {
@@ -123,10 +163,6 @@ export async function DELETE(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Delete product error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to delete product');
   }
 }

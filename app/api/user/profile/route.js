@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { protect } from '@/lib/auth';
+import { createErrorResponse } from '@/lib/apiHelpers';
+import { z } from 'zod';
+
+// Profile update schema
+const profileSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(50, 'Name is too long').optional(),
+  phone: z.string().regex(/^\d{10}$/, 'Phone number must be 10 digits').optional().nullable(),
+  address: z.string().max(500, 'Address is too long').optional().nullable()
+});
 
 // GET /api/user/profile - Get user profile
 export async function GET(request) {
@@ -16,7 +25,14 @@ export async function GET(request) {
 
     await dbConnect();
 
-    const user = await User.findById(auth.user._id);
+    const user = await User.findById(auth.user._id).select('-password -otp -otpExpiry');
+
+    if (!user) {
+      return NextResponse.json(
+        { message: 'User not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -26,11 +42,7 @@ export async function GET(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get profile error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch profile');
   }
 }
 
@@ -47,10 +59,22 @@ export async function PUT(request) {
 
     await dbConnect();
 
-    const { name, phone, address } = await request.json();
+    const body = await request.json();
 
+    // Validate input
+    const validationResult = profileSchema.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { message: validationResult.error.errors[0].message },
+        { status: 400 }
+      );
+    }
+
+    const { name, phone, address } = validationResult.data;
+
+    // Build update object with only allowed fields
     const updateData = {};
-    if (name) updateData.name = name;
+    if (name !== undefined) updateData.name = name;
     if (phone !== undefined) updateData.phone = phone;
     if (address !== undefined) updateData.address = address;
 
@@ -69,10 +93,6 @@ export async function PUT(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Update profile error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to update profile');
   }
 }

@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import Cart from '@/models/Cart';
 import Product from '@/models/Product';
 import { protect } from '@/lib/auth';
+import { createErrorResponse, isValidObjectId } from '@/lib/apiHelpers';
 
 // GET /api/cart - Get user's cart
 export async function GET(request) {
@@ -33,11 +34,7 @@ export async function GET(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get cart error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch cart');
   }
 }
 
@@ -55,6 +52,22 @@ export async function POST(request) {
     await dbConnect();
 
     const { productId, quantity } = await request.json();
+
+    // Validate productId
+    if (!productId || !isValidObjectId(productId)) {
+      return NextResponse.json(
+        { message: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
+    // Validate quantity
+    if (!quantity || quantity < 1 || quantity > 100) {
+      return NextResponse.json(
+        { message: 'Invalid quantity' },
+        { status: 400 }
+      );
+    }
 
     // Check product exists and has stock
     const product = await Product.findById(productId);
@@ -112,11 +125,7 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Add to cart error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to add item to cart');
   }
 }
 
@@ -144,10 +153,6 @@ export async function DELETE(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Clear cart error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to clear cart');
   }
 }

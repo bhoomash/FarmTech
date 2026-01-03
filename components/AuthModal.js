@@ -6,6 +6,32 @@ import Image from 'next/image';
 import { authAPI } from '@/services/api';
 import toast from 'react-hot-toast';
 
+// Validation functions
+const validateEmail = (email) => {
+  if (!email) return 'Email is required';
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) return 'Please enter a valid email address';
+  return '';
+};
+
+const validatePassword = (password, isSignup = false) => {
+  if (!password) return 'Password is required';
+  if (password.length < 6) return 'Password must be at least 6 characters';
+  if (isSignup) {
+    if (!/[A-Z]/.test(password)) return 'Password must contain at least one uppercase letter';
+    if (!/[a-z]/.test(password)) return 'Password must contain at least one lowercase letter';
+    if (!/[0-9]/.test(password)) return 'Password must contain at least one number';
+  }
+  return '';
+};
+
+const validateName = (name) => {
+  if (!name) return 'Name is required';
+  if (name.trim().length < 2) return 'Name must be at least 2 characters';
+  if (!/^[a-zA-Z\s]+$/.test(name)) return 'Name can only contain letters and spaces';
+  return '';
+};
+
 export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
   const router = useRouter();
   const [isSignup, setIsSignup] = useState(defaultMode === 'signup');
@@ -16,12 +42,14 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
       setFormData({ email: '', password: '', name: '' });
       setErrors({});
+      setTouched({});
       setIsSignup(defaultMode === 'signup');
     }
   }, [isOpen, defaultMode]);
@@ -50,31 +78,65 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
   }, [isOpen]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    setErrors({ ...errors, [e.target.name]: '' });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Real-time validation for touched fields
+    if (touched[name]) {
+      let error = '';
+      if (name === 'email') error = validateEmail(value);
+      else if (name === 'password') error = validatePassword(value, isSignup);
+      else if (name === 'name') error = validateName(value);
+      setErrors({ ...errors, [name]: error, general: '' });
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched({ ...touched, [name]: true });
+    
+    // Validate on blur
+    let error = '';
+    if (name === 'email') error = validateEmail(value);
+    else if (name === 'password') error = validatePassword(value, isSignup);
+    else if (name === 'name') error = validateName(value);
+    setErrors({ ...errors, [name]: error });
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validate email
+    const emailError = validateEmail(formData.email);
+    if (emailError) newErrors.email = emailError;
+    
+    // Validate password
+    const passwordError = validatePassword(formData.password, isSignup);
+    if (passwordError) newErrors.password = passwordError;
+    
+    // Validate name for signup
+    if (isSignup) {
+      const nameError = validateName(formData.name);
+      if (nameError) newErrors.name = nameError;
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrors({});
-
-    // Validation
-    if (!formData.email || !formData.password) {
-      setErrors({ general: 'Email and password are required' });
-      return;
-    }
-
-    if (isSignup && !formData.name) {
-      setErrors({ name: 'Name is required for signup' });
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      setErrors({ password: 'Password must be at least 6 characters' });
+    
+    // Mark all fields as touched
+    setTouched({ email: true, password: true, name: true });
+    
+    // Validate form
+    if (!validateForm()) {
       return;
     }
 
     setLoading(true);
+    setErrors({});
 
     try {
       if (isSignup) {
@@ -169,6 +231,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
                 onClick={() => {
                   setIsSignup(false);
                   setErrors({});
+                  setTouched({});
                 }}
                 className={`flex-1 px-4 py-2.5 rounded-md font-medium text-sm transition-all ${
                   !isSignup ? 'bg-white text-primary-600 shadow-sm' : 'text-neutral-600 hover:text-neutral-900'
@@ -181,6 +244,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
                 onClick={() => {
                   setIsSignup(true);
                   setErrors({});
+                  setTouched({});
                 }}
                 className={`flex-1 px-4 py-2.5 rounded-md font-medium text-sm transition-all ${
                   isSignup ? 'bg-white text-primary-600 shadow-sm' : 'text-neutral-600 hover:text-neutral-900'
@@ -201,10 +265,11 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
+                  onBlur={handleBlur}
                   placeholder="Enter your name"
-                  className="input-field"
+                  className={`input-field ${errors.name && touched.name ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
-                {errors.name && (
+                {errors.name && touched.name && (
                   <p className="text-red-500 text-sm mt-1">{errors.name}</p>
                 )}
               </div>
@@ -220,10 +285,11 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="Enter your email"
-                className="input-field"
+                className={`input-field ${errors.email && touched.email ? 'border-red-500 focus:ring-red-500' : ''}`}
               />
-              {errors.email && (
+              {errors.email && touched.email && (
                 <p className="text-red-500 text-sm mt-1">{errors.email}</p>
               )}
             </div>
@@ -238,11 +304,17 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'login' }) {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="Enter your password"
-                className="input-field"
+                className={`input-field ${errors.password && touched.password ? 'border-red-500 focus:ring-red-500' : ''}`}
               />
-              {errors.password && (
+              {errors.password && touched.password && (
                 <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+              )}
+              {isSignup && !errors.password && (
+                <p className="text-neutral-500 text-xs mt-1">
+                  Min 6 chars, with uppercase, lowercase, and number
+                </p>
               )}
             </div>
 

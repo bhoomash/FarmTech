@@ -63,26 +63,17 @@ export async function POST(request) {
       );
     }
 
-    // Find or create user
-    let user = await User.findOne({ email }).select('+otp +otpExpiry');
+    const normalizedEmail = email.toLowerCase();
+
+    // Find existing user (for login flow)
+    let user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpiry');
 
     if (!user) {
-      // Create new user
-      if (!name) {
-        return NextResponse.json(
-          { message: 'Name is required for new users' },
-          { status: 400 }
-        );
-      }
-
-      user = await User.create({
-        name,
-        email,
-        role: 'user',
-      });
-    } else if (isNewUser && name) {
-      // Update name if provided for existing user
-      user.name = name;
+      // No user found - they need to sign up first
+      return NextResponse.json(
+        { message: 'No account found. Please sign up first.' },
+        { status: 404 }
+      );
     }
 
     // Generate OTP (now async due to bcrypt hashing)
@@ -90,7 +81,7 @@ export async function POST(request) {
     await user.save();
 
     // Send OTP via email
-    const emailResult = await sendOTPEmail(email, otp);
+    const emailResult = await sendOTPEmail(normalizedEmail, otp);
 
     if (!emailResult.success) {
       return NextResponse.json(
@@ -101,8 +92,9 @@ export async function POST(request) {
 
     return NextResponse.json(
       {
+        success: true,
         message: 'OTP sent to your email',
-        email: user.email,
+        email: normalizedEmail,
       },
       { status: 200 }
     );

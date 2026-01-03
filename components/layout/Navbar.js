@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { useConfirm } from '@/components/ConfirmModal';
 import CartDrawer from '@/components/cart/CartDrawer';
 import { prefetchProducts, prefetchOrders, prefetchCart, prefetchAdminOrders, prefetchAdminUsers } from '@/lib/prefetch';
 
@@ -13,6 +14,7 @@ const Navbar = memo(function Navbar() {
   const router = useRouter();
   const { user, isAuthenticated, logout, isAdmin, openAuthModal } = useAuth();
   const { cartItemCount } = useCart();
+  const { confirm } = useConfirm();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [productsDropdownOpen, setProductsDropdownOpen] = useState(false);
@@ -110,10 +112,20 @@ const Navbar = memo(function Navbar() {
     }
   }, [searchInput, router]);
 
-  const handleLogout = useCallback(() => {
-    logout();
-    setUserDropdownOpen(false);
-  }, [logout]);
+  const handleLogout = useCallback(async () => {
+    const confirmed = await confirm({
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmText: 'Logout',
+      cancelText: 'Cancel',
+      variant: 'warning'
+    });
+    
+    if (confirmed) {
+      logout();
+      setUserDropdownOpen(false);
+    }
+  }, [logout, confirm]);
 
   return (
     <nav className="bg-white border-b border-neutral-200 sticky top-0 z-50">
@@ -590,9 +602,18 @@ const Navbar = memo(function Navbar() {
                   <div className="border-t border-neutral-100 my-2"></div>
 
                   <button
-                    onClick={() => {
-                      logout();
-                      setMobileMenuOpen(false);
+                    onClick={async () => {
+                      const confirmed = await confirm({
+                        title: 'Logout',
+                        message: 'Are you sure you want to logout?',
+                        confirmText: 'Logout',
+                        cancelText: 'Cancel',
+                        variant: 'warning'
+                      });
+                      if (confirmed) {
+                        logout();
+                        setMobileMenuOpen(false);
+                      }
                     }}
                     className="flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors w-full"
                   >

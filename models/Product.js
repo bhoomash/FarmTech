@@ -36,6 +36,17 @@ const productSchema = new mongoose.Schema(
     image: {
       type: String,
       required: [true, 'Please provide a product image'],
+      validate: {
+        validator: function(v) {
+          try {
+            const url = new URL(v);
+            return ['http:', 'https:'].includes(url.protocol);
+          } catch {
+            return false;
+          }
+        },
+        message: 'Please provide a valid image URL'
+      }
     },
     isActive: {
       type: Boolean,

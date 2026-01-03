@@ -10,6 +10,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import AuthModalWrapper from '@/components/AuthModalWrapper';
 import HydrationLoader from '@/components/HydrationLoader';
 import CacheCleanup from '@/components/CacheCleanup';
+import FarmAssistant from '@/components/chatbot/FarmAssistant';
 
 const inter = Inter({ 
   subsets: ['latin'], 
@@ -55,6 +56,7 @@ export default function RootLayout({ children }) {
                     {children}
                   </main>
                   <Footer />
+                  <FarmAssistant />
                 </div>
               </ConfirmProvider>
             </CartProvider>

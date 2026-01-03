@@ -47,84 +47,105 @@ export default function VerifyOTPPage() {
     }
   };
 
+  const handleClose = () => {
+    localStorage.removeItem('pendingEmail');
+    router.push('/');
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-50 py-12 px-4">
-      <div className="max-w-md w-full card p-8">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <Image 
-              src="/logo.png" 
-              alt="FarmTech Logo" 
-              width={40} 
-              height={40}
-            />
-            <div className="text-left">
-              <h2 className="text-2xl font-bold text-neutral-900">FarmTech</h2>
-              <p className="text-xs text-neutral-500">Farm Solutions</p>
-            </div>
-          </div>
-          <h1 className="text-2xl font-bold text-neutral-900 mb-2">Verify OTP</h1>
-          <p className="text-neutral-600">Enter the OTP sent to</p>
-          <p className="text-primary-600 font-medium mt-1">{email}</p>
-        </div>
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-4">📧</div>
-          <h1 className="text-3xl font-bold text-gray-900">Verify OTP</h1>
-          <p className="text-gray-600 mt-2">
-            We've sent a 6-digit code to
-          </p>
-          <p className="text-primary-600 font-semibold">{email}</p>
-        </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+        {/* Close button */}
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-600 transition-colors z-10"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Enter OTP
-            </label>
-            <input
-              type="text"
-              value={otp}
-              onChange={(e) => {
-                setOtp(e.target.value);
-                setErrors({});
-              }}
-              placeholder="000000"
-              maxLength={6}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-widest focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-            {errors.otp && (
-              <p className="text-red-500 text-sm mt-1">{errors.otp}</p>
+        {/* Modal content */}
+        <div className="p-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 mb-4">
+              <Image 
+                src="/logo.png" 
+                alt="FarmTech Logo" 
+                width={40} 
+                height={40}
+              />
+              <div className="text-left">
+                <h2 className="text-2xl font-bold text-neutral-900">FarmTech</h2>
+                <p className="text-xs text-neutral-500">Farm Solutions</p>
+              </div>
+            </div>
+            
+            <h1 className="text-2xl font-bold text-neutral-900 mb-2">Verify OTP</h1>
+            <p className="text-neutral-600">We've sent a 6-digit code to</p>
+            <p className="text-primary-600 font-medium mt-1">{email}</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter OTP
+              </label>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => {
+                  // Only allow numbers
+                  const value = e.target.value.replace(/\D/g, '');
+                  setOtp(value);
+                  setErrors({});
+                }}
+                placeholder="000000"
+                maxLength={6}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl tracking-widest focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                autoFocus
+              />
+              {errors.otp && (
+                <p className="text-red-500 text-sm mt-1">{errors.otp}</p>
+              )}
+            </div>
+
+            {/* General error */}
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {errors.general}
+              </div>
             )}
+
+            {/* Submit button */}
+            <button
+              type="submit"
+              disabled={loading || otp.length !== 6}
+              className="w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Verifying...' : 'Verify OTP'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <button
+              onClick={handleClose}
+              className="text-primary-600 hover:underline text-sm"
+            >
+              Back to Home
+            </button>
           </div>
 
-          {/* General error */}
-          {errors.general && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-              {errors.general}
-            </div>
-          )}
-
-          {/* Submit button */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary-600 text-white py-3 rounded-lg hover:bg-primary-700 transition disabled:bg-gray-400"
-          >
-            {loading ? 'Verifying...' : 'Verify OTP'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => router.push('/')}
-            className="text-primary-600 hover:underline text-sm"
-          >
-            Back to Home
-          </button>
-        </div>
-
-        <div className="mt-4 text-center text-sm text-gray-600">
-          <p>OTP valid for 5 minutes</p>
+          <div className="mt-4 text-center text-sm text-neutral-500 bg-neutral-50 p-3 rounded-lg">
+            <p>OTP valid for 5 minutes</p>
+          </div>
         </div>
       </div>
     </div>

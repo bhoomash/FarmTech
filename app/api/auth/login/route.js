@@ -2,9 +2,29 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import { generateToken } from '@/lib/jwt';
+import { checkRateLimit, getClientIP, createErrorResponse } from '@/lib/apiHelpers';
 
 export async function POST(request) {
   try {
+    // Rate limiting - 5 attempts per 15 minutes per IP
+    const clientIP = getClientIP(request);
+    const rateLimit = checkRateLimit(`login:${clientIP}`, 5, 15 * 60 * 1000);
+    
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          message: 'Too many login attempts. Please try again later.',
+          retryAfter: rateLimit.resetAt
+        },
+        { 
+          status: 429,
+          headers: {
+            'Retry-After': Math.ceil((rateLimit.resetAt.getTime() - Date.now()) / 1000).toString()
+          }
+        }
+      );
+    }
+
     await dbConnect();
 
     const { email, password } = await request.json();
@@ -66,10 +86,6 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Login failed');
   }
 }

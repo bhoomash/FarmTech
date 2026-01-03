@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-import crypto from 'crypto';
 import { protect } from '@/lib/auth';
+import { createErrorResponse } from '@/lib/apiHelpers';
 
 const razorpay = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET 
   ? new Razorpay({
@@ -30,6 +30,22 @@ export async function POST(request) {
 
     const { amount } = await request.json();
 
+    // Validate amount
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return NextResponse.json(
+        { message: 'Invalid amount' },
+        { status: 400 }
+      );
+    }
+
+    // Limit maximum order amount (e.g., 10 lakhs)
+    if (amount > 1000000) {
+      return NextResponse.json(
+        { message: 'Amount exceeds maximum limit' },
+        { status: 400 }
+      );
+    }
+
     // Create Razorpay order
     const options = {
       amount: Math.round(amount * 100), // Convert to paise
@@ -52,10 +68,6 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Create order error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to create payment order');
   }
 }

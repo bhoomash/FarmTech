@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Order from '@/models/Order';
 import { protect, authorize } from '@/lib/auth';
+import { createErrorResponse, isValidObjectId } from '@/lib/apiHelpers';
+
+// Valid order statuses
+const VALID_ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 // GET /api/orders/[id] - Get single order
 export async function GET(request, { params }) {
@@ -17,6 +21,14 @@ export async function GET(request, { params }) {
     await dbConnect();
 
     const { id } = await params;
+
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return NextResponse.json(
+        { message: 'Invalid order ID' },
+        { status: 400 }
+      );
+    }
 
     const order = await Order.findById(id)
       .populate('user', 'name email')
@@ -45,11 +57,7 @@ export async function GET(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get order error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch order');
   }
 }
 
@@ -75,7 +83,24 @@ export async function PUT(request, { params }) {
     await dbConnect();
 
     const { id } = await params;
+
+    // Validate ObjectId
+    if (!isValidObjectId(id)) {
+      return NextResponse.json(
+        { message: 'Invalid order ID' },
+        { status: 400 }
+      );
+    }
+
     const { orderStatus } = await request.json();
+
+    // Validate order status
+    if (!orderStatus || !VALID_ORDER_STATUSES.includes(orderStatus)) {
+      return NextResponse.json(
+        { message: `Invalid order status. Must be one of: ${VALID_ORDER_STATUSES.join(', ')}` },
+        { status: 400 }
+      );
+    }
 
     const order = await Order.findByIdAndUpdate(
       id,
@@ -99,10 +124,6 @@ export async function PUT(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Update order error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to update order');
   }
 }

@@ -3,6 +3,7 @@ import dbConnect from '@/lib/db';
 import User from '@/models/User';
 import Product from '@/models/Product';
 import { protect, authorize } from '@/lib/auth';
+import { createErrorResponse } from '@/lib/apiHelpers';
 
 // GET /api/user/admin/users - Get all users (Admin only)
 export async function GET(request) {
@@ -25,7 +26,7 @@ export async function GET(request) {
 
     await dbConnect();
 
-    const users = await User.find().select('-otp -otpExpiry');
+    const users = await User.find().select('-password -otp -otpExpiry');
     const products = await Product.find();
 
     return NextResponse.json(
@@ -37,10 +38,6 @@ export async function GET(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error('Get users error:', error);
-    return NextResponse.json(
-      { message: error.message || 'Server error' },
-      { status: 500 }
-    );
+    return createErrorResponse(error, 'Failed to fetch users');
   }
 }
