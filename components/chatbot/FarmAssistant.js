@@ -466,7 +466,7 @@ ${productSection}`;
       {/* Floating Chat Button - Farm Style */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-2xl shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-xl ${
+        className={`fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-50 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-xl ${
           isOpen 
             ? 'bg-neutral-700 hover:bg-neutral-600' 
             : 'bg-green-600 hover:bg-green-500'
@@ -474,15 +474,15 @@ ${productSection}`;
         aria-label={isOpen ? 'Close chat' : 'Open Farm Assistant'}
       >
         {isOpen ? (
-          <FaTimes className="text-white text-xl" />
+          <FaTimes className="text-white text-lg sm:text-xl" />
         ) : (
-          <GiWheat className="text-white text-2xl" />
+          <GiWheat className="text-white text-xl sm:text-2xl" />
         )}
       </button>
 
       {/* Chat Window - Clean Design */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] h-[580px] max-h-[calc(100vh-8rem)] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-neutral-200 animate-slideUp">
+        <div className="fixed inset-4 sm:inset-auto sm:bottom-24 sm:right-6 z-50 sm:w-[380px] sm:max-w-[calc(100vw-3rem)] sm:h-[580px] sm:max-h-[calc(100vh-8rem)] bg-white rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-neutral-200 animate-slideUp">
           {/* Header - Clean White Style */}
           <div className="bg-white border-b border-neutral-100 px-5 py-4">
             <div className="flex items-center justify-between">
@@ -498,13 +498,22 @@ ${productSection}`;
                   </p>
                 </div>
               </div>
-              <button
-                onClick={resetConversation}
-                className="p-2 hover:bg-neutral-100 rounded-xl transition-colors"
-                title="Reset conversation"
-              >
-                <RiRestartLine className="text-lg text-neutral-400 hover:text-neutral-600" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={resetConversation}
+                  className="p-2 hover:bg-neutral-100 rounded-xl transition-colors"
+                  title="Reset conversation"
+                >
+                  <RiRestartLine className="text-lg text-neutral-400 hover:text-neutral-600" />
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="p-2 hover:bg-neutral-100 rounded-xl transition-colors"
+                  title="Close chat"
+                >
+                  <FaTimes className="text-lg text-neutral-400 hover:text-neutral-600" />
+                </button>
+              </div>
             </div>
           </div>
 

@@ -54,9 +54,6 @@ export default function Footer() {
               <li>
                 <a href="/orders" className="text-neutral-700 hover:text-green-600 transition-colors">Orders</a>
               </li>
-              <li>
-                <a href="/cart" className="text-neutral-700 hover:text-green-600 transition-colors">Cart</a>
-              </li>
               
             </ul>
           </div>
